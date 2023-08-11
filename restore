@@ -1,0 +1,4 @@
+进度：下一步，检查diksam.y有哪些地方需要修改，伴随着还需要修改create.c和补充dels.h。
+修正完后看一下能不能将AST打印出来便于正确性和调试。如果弄好，就代表第一步的AST生成OK了。
+再下一步是walk ast for semantic analysis.
+    | 目前进度 diksam.y -- 274行

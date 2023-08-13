@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "DBG.h"
-#include "diksamc.h"
+#include "decls.h"
 #include "y.tab.h"
 
 static int
@@ -29,13 +29,13 @@ static char **st_source_string;
 static int st_current_source_line;
 static int st_current_char_index;
  
-void
-dkc_set_source_string(char **source)
-{
-    st_source_string = source;
-    st_current_source_line = 0;
-    st_current_char_index = 0;
-}
+// void
+// dkc_set_source_string(char **source)
+// {
+//     st_source_string = source;
+//     st_current_source_line = 0;
+//     st_current_char_index = 0;
+// }
 
 static int
 string_input(char *buf, int max_size)
@@ -69,18 +69,19 @@ static int
 my_yyinput(char *buf, int max_size)
 {
     int result;
+    result = file_input(buf, max_size);
 
-    switch (dkc_get_current_compiler()->input_mode) {
-    case DKC_FILE_INPUT_MODE:
-        result = file_input(buf, max_size);
-        break;
-    case DKC_STRING_INPUT_MODE:
-        result = string_input(buf, max_size);
-        break;
-    default:
-        DBG_panic(("bad default. input_mode..%d\n",
-                   dkc_get_current_compiler()->input_mode));
-    }
+    // switch (dkc_get_current_compiler()->input_mode) {
+    // case DKC_FILE_INPUT_MODE:
+    //     result = file_input(buf, max_size);
+    //     break;
+    // case DKC_STRING_INPUT_MODE:
+    //     result = string_input(buf, max_size);
+    //     break;
+    // default:
+    //     DBG_panic(("bad default. input_mode..%d\n",
+    //                dkc_get_current_compiler()->input_mode));
+    // }
 
     return result;
 }
@@ -95,10 +96,10 @@ yywrap(void)
 static void
 increment_line_number(void)
 {
-    dkc_get_current_compiler()->current_line_number++;
+    get_current_compiler()->current_line_number++;
 }
 %}
-%start C_COMMENT CC_COMMENT STRING_LITERAL_STATE SHIFT_JIS_2ND_CHAR
+%start C_COMMENT CC_COMMENT STRING_LITERAL_STATE
 %%
 <INITIAL>"if"           return IF;
 <INITIAL>"else"         return ELSE;
@@ -150,29 +151,32 @@ increment_line_number(void)
 <INITIAL>"!"            return EXCLAMATION;
 <INITIAL>"."            return DOT;
 <INITIAL>[A-Za-z_][A-Za-z_0-9]* {
-    yylval.identifier = dkc_create_identifier(yytext);
+    yylval.identifier = create_identifier(yytext);
     return IDENTIFIER;
 }
 <INITIAL>[1-9][0-9]* {
-    Expression  *expression = dkc_alloc_expression(INT_EXPRESSION);
-    sscanf(yytext, "%d", &expression->u.int_value);
+    Expression  *expression = alloc_expression(INT_LITERAL_EXPRESSION);
+    expression->type = INT_TYPE;
+    sscanf(yytext, "%d", &expression->int_v);
     yylval.expression = expression;
     return INT_LITERAL;
 }
 <INITIAL>"0" {
-    Expression  *expression = dkc_alloc_expression(INT_EXPRESSION);
-    expression->u.int_value = 0;
+    Expression  *expression = alloc_expression(INT_LITERAL_EXPRESSION);
+    expression->type = INT_TYPE;
+    expression->int_v = 0;
     yylval.expression = expression;
     return INT_LITERAL;
 }
 <INITIAL>[0-9]+\.[0-9]+ {
-    Expression  *expression = dkc_alloc_expression(DOUBLE_EXPRESSION);
-    sscanf(yytext, "%lf", &expression->u.double_value);
+    Expression  *expression = alloc_expression(DOUBLE_LITERAL_EXPRESSION);
+    expression->type = DOUBLE_TYPE;
+    sscanf(yytext, "%lf", &expression->double_v);
     yylval.expression = expression;
     return DOUBLE_LITERAL;
 }
 <INITIAL>\" {
-    dkc_open_string_literal();
+    open_string_literal();
     BEGIN STRING_LITERAL_STATE;
 }
 <INITIAL>[ \t] ;
@@ -188,10 +192,12 @@ increment_line_number(void)
     } else {
         sprintf(buf, "0x%02x", (unsigned char)yytext[0]);
     }
-    dkc_compile_error(dkc_get_current_compiler()->current_line_number,
-                      CHARACTER_INVALID_ERR,
-                      STRING_MESSAGE_ARGUMENT, "bad_char", buf,
-                      MESSAGE_ARGUMENT_END);
+    printf("diksam.l -- line 192 error\n");
+    exit(1);
+    // dkc_compile_error(dkc_get_current_compiler()->current_line_number,
+    //                   CHARACTER_INVALID_ERR,
+    //                   STRING_MESSAGE_ARGUMENT, "bad_char", buf,
+    //                   MESSAGE_ARGUMENT_END);
 }
 <C_COMMENT>\n     increment_line_number();
 <C_COMMENT>"*/"     {
@@ -204,33 +210,22 @@ increment_line_number(void)
 }
 <CC_COMMENT>.   ;
 <STRING_LITERAL_STATE>\"        {
-    Expression *expression = dkc_alloc_expression(STRING_EXPRESSION);
-    expression->u.string_value = dkc_close_string_literal();
+    Expression *expression = alloc_expression(STRING_LITERAL_EXPRESSION);
+    expression->type = STRING_TYPE;
+    expression->string_v = close_string_literal();
     yylval.expression = expression;
     BEGIN INITIAL;
     return STRING_LITERAL;
 }
 <STRING_LITERAL_STATE>\n        {
-    dkc_add_string_literal('\n');
+    add_string_literal('\n');
     increment_line_number();
 }
-<STRING_LITERAL_STATE>\\\"      dkc_add_string_literal('"');
-<STRING_LITERAL_STATE>\\n       dkc_add_string_literal('\n');
-<STRING_LITERAL_STATE>\\t       dkc_add_string_literal('\t');
-<STRING_LITERAL_STATE>\\\\      dkc_add_string_literal('\\');
+<STRING_LITERAL_STATE>\\\"      add_string_literal('"');
+<STRING_LITERAL_STATE>\\n       add_string_literal('\n');
+<STRING_LITERAL_STATE>\\t       add_string_literal('\t');
+<STRING_LITERAL_STATE>\\\\      add_string_literal('\\');
 <STRING_LITERAL_STATE>.         {
-    Encoding enc = dkc_get_current_compiler()->source_encoding;
-    dkc_add_string_literal(yytext[0]);
-    if (enc == SHIFT_JIS_ENCODING
-        && ((((unsigned char*)yytext)[0] >= 0x81
-             && ((unsigned char*)yytext)[0] <= 0x9e)
-            || (((unsigned char*)yytext)[0] >= 0xe0
-                && ((unsigned char*)yytext)[0] <= 0xef))) {
-        BEGIN SHIFT_JIS_2ND_CHAR;
-    }
-}
-<SHIFT_JIS_2ND_CHAR>. {
-    dkc_add_string_literal(yytext[0]);
-    BEGIN STRING_LITERAL_STATE;
+    add_string_literal(yytext[0]);
 }
 %%

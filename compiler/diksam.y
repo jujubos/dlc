@@ -1,10 +1,10 @@
 %{
 #include <stdio.h>
-#include "delcs.h"
+#include "decls.h"
 #define YYDEBUG 1
 %}
 %union {
-    char                *identifier;
+    Identifier          *identifier;
     ParameterList       *parameter_list;
     ArgumentList        *argument_list;
     Expression          *expression;
@@ -12,7 +12,7 @@
     StatementList       *statement_list;
     Block               *block;
     Elif                *elif;
-    ValueType           type_specifier;
+    TypeSpecifier       *type_specifier;
 }
 %token <expression>     INT_LITERAL
 %token <expression>     DOUBLE_LITERAL
@@ -38,7 +38,7 @@
         throw_statement declaration_statement
 %type   <statement_list> statement_list
 %type   <block> block
-%type   <elif> elsif elsif_list
+%type   <elif> elif elif_list
 %type   <identifier> identifier_opt label_opt
 %type   <type_specifier> type_specifier
 %%
@@ -52,26 +52,25 @@ definition_or_statement
         {
             Compiler *comp = get_current_compiler();
 
-            comp->statement_list
-                = chain_statement_list(comp->statement_list, $1);
+            chain_statement_list(comp->statement_list, $1);
         }
         ;
 type_specifier
         : BOOLEAN_T
         {
-            $$ = BOOLEAN;
+            $$ = create_typespecifer(BOOLEAN_TYPE);
         }
         | INT_T
         {
-            $$ = INT;
+            $$ = create_typespecifer(INT_TYPE);
         }
         | DOUBLE_T
         {
-            $$ = DOUBLE;
+            $$ = create_typespecifer(DOUBLE_TYPE);
         }
         | STRING_T
         {
-            $$ = STRING;
+            $$ = create_typespecifer(STRING_TYPE);
         }
         ;
 function_definition
@@ -133,97 +132,97 @@ assignment_expression
         : logical_or_expression
         | postfix_expression ASSIGN_T assignment_expression
         {
-            $$ = create_binary_expression(NORMAL_ASSIGN, $1, $3);
+            $$ = create_binary_expression(NORMAL_ASSIGN_EXPRESSION, $1, $3);
         }
         | postfix_expression ADD_ASSIGN_T assignment_expression
         {
-            $$ = create_binary_expression(ADD_ASSIGN, $1, $3);
+            $$ = create_binary_expression(ADD_ASSIGN_EXPRESSION, $1, $3);
         }
         | postfix_expression SUB_ASSIGN_T assignment_expression
         {
-            $$ = create_binary_expression(SUB_ASSIGN, $1, $3);
+            $$ = create_binary_expression(SUB_ASSIGN_EXPRESSION, $1, $3);
         }
         | postfix_expression MUL_ASSIGN_T assignment_expression
         {
-            $$ = create_binary_expression(MUL_ASSIGN, $1, $3);
+            $$ = create_binary_expression(MUL_ASSIGN_EXPRESSION, $1, $3);
         }
         | postfix_expression DIV_ASSIGN_T assignment_expression
         {
-            $$ = create_binary_expression(DIV_ASSIGN, $1, $3);
+            $$ = create_binary_expression(DIV_ASSIGN_EXPRESSION, $1, $3);
         }
         | postfix_expression MOD_ASSIGN_T assignment_expression
         {
-            $$ = create_binary_expression(MOD_ASSIGN, $1, $3);
+            $$ = create_binary_expression(MOD_ASSIGN_EXPRESSION, $1, $3);
         }
         ;
 logical_or_expression
         : logical_and_expression
         | logical_or_expression LOGICAL_OR logical_and_expression
         {
-            $$ = create_binary_expression(LOGICAL_OR, $1, $3);
+            $$ = create_binary_expression(LOGICAL_OR_EXPRESSION, $1, $3);
         }
         ;
 logical_and_expression
         : equality_expression
         | logical_and_expression LOGICAL_AND equality_expression
         {
-            $$ = create_binary_expression(LOGICAL_AND, $1, $3);
+            $$ = create_binary_expression(LOGICAL_AND_EXPRESSION, $1, $3);
         }
         ;
 equality_expression
         : relational_expression
         | equality_expression EQ relational_expression
         {
-            $$ = create_binary_expression(RELATION_EQ, $1, $3);
+            $$ = create_binary_expression(RELATION_EQ_EXPRESSION, $1, $3);
         }
         | equality_expression NE relational_expression
         {
-            $$ = create_binary_expression(RELATION_NE, $1, $3);
+            $$ = create_binary_expression(RELATION_NE_EXPRESSION, $1, $3);
         }
         ;
 relational_expression
         : additive_expression
         | relational_expression GT additive_expression
         {
-            $$ = create_binary_expression(RELATION_GT, $1, $3);
+            $$ = create_binary_expression(RELATION_GT_EXPRESSION, $1, $3);
         }
         | relational_expression GE additive_expression
         {
-            $$ = create_binary_expression(RELATION_GE, $1, $3);
+            $$ = create_binary_expression(RELATION_GE_EXPRESSION, $1, $3);
         }
         | relational_expression LT additive_expression
         {
-            $$ = create_binary_expression(RELATION_LT, $1, $3);
+            $$ = create_binary_expression(RELATION_LT_EXPRESSION, $1, $3);
         }
         | relational_expression LE additive_expression
         {
-            $$ = create_binary_expression(RELATION_LE, $1, $3);
+            $$ = create_binary_expression(RELATION_LE_EXPRESSION, $1, $3);
         }
         ;
 additive_expression
         : multiplicative_expression
         | additive_expression ADD multiplicative_expression
         {
-            $$ = create_binary_expression(ARITH_ADD, $1, $3);
+            $$ = create_binary_expression(ARITH_ADDITIVE_EXPRESSION, $1, $3);
         }
         | additive_expression SUB multiplicative_expression
         {
-            $$ = create_binary_expression(ARITH_SUB, $1, $3);
+            $$ = create_binary_expression(ARITH_SUBSTRACTION_EXPRESSION, $1, $3);
         }
         ;
 multiplicative_expression
         : unary_expression
         | multiplicative_expression MUL unary_expression
         {
-            $$ = create_binary_expression(ARITH_MUL, $1, $3);
+            $$ = create_binary_expression(ARITH_MULTIPLICATION_EXPRESSION, $1, $3);
         }
         | multiplicative_expression DIV unary_expression
         {
-            $$ = create_binary_expression(ARITH_DIV, $1, $3);
+            $$ = create_binary_expression(ARITH_DIVISION_EXPRESSION, $1, $3);
         }
         | multiplicative_expression MOD unary_expression
         {
-            $$ = create_binary_expression(ARITH_MOD, $1, $3);
+            $$ = create_binary_expression(ARITH_MODULO_EXPRESSION, $1, $3);
         }
         ;
 unary_expression
@@ -249,11 +248,11 @@ postfix_expression
         }
         | postfix_expression INCREMENT
         {
-            $$ = create_incdec_expression($1, INCREMENT_EXPRESSION);
+            $$ = create_incdec_expression(POST_INCREMENT_EXPRESSION, $1);
         }
         | postfix_expression DECREMENT
         {
-            $$ = create_incdec_expression($1, DECREMENT_EXPRESSION);
+            $$ = create_incdec_expression(POST_DECREMENT_EXPRESSION, $1);
         }
         ;
 primary_expression
@@ -271,17 +270,17 @@ primary_expression
         | REGEXP_LITERAL
         | TRUE_T
         {
-            $$ = dkc_create_boolean_expression(DVM_TRUE);
+            $$ = create_boolean_expression(TRUE);
         }
         | FALSE_T
         {
-            $$ = dkc_create_boolean_expression(DVM_FALSE);
+            $$ = create_boolean_expression(FALSE);
         }
         ;
 statement
         : expression SEMICOLON
         {
-          $$ = dkc_create_expression_statement($1);
+          $$ = create_expression_statement($1);
         }
         | if_statement
         | while_statement
@@ -297,32 +296,32 @@ statement
 if_statement
         : IF LP expression RP block
         {
-            $$ = dkc_create_if_statement($3, $5, NULL, NULL);
+            $$ = create_if_statement($3, $5, NULL, NULL);
         }
         | IF LP expression RP block ELSE block
         {
-            $$ = dkc_create_if_statement($3, $5, NULL, $7);
+            $$ = create_if_statement($3, $5, NULL, $7);
         }
-        | IF LP expression RP block elsif_list
+        | IF LP expression RP block elif_list
         {
-            $$ = dkc_create_if_statement($3, $5, $6, NULL);
+            $$ = create_if_statement($3, $5, $6, NULL);
         }
-        | IF LP expression RP block elsif_list ELSE block
+        | IF LP expression RP block elif_list ELSE block
         {
-            $$ = dkc_create_if_statement($3, $5, $6, $8);
+            $$ = create_if_statement($3, $5, $6, $8);
         }
         ;
-elsif_list
-        : elsif
-        | elsif_list elsif
+elif_list
+        : elif
+        | elif_list elif
         {
-            $$ = dkc_chain_elsif_list($1, $2);
+            $$ = chain_elif_list($1, $2);
         }
         ;
-elsif
+elif
         : ELSIF LP expression RP block
         {
-            $$ = dkc_create_elsif($3, $5);
+            $$ = create_elif($3, $5);
         }
         ;
 label_opt
@@ -338,20 +337,20 @@ label_opt
 while_statement
         : label_opt WHILE LP expression RP block
         {
-            $$ = dkc_create_while_statement($1, $4, $6);
+            $$ = create_while_statement($1, $4, $6);
         }
         ;
 for_statement
         : label_opt FOR LP expression_opt SEMICOLON expression_opt SEMICOLON
           expression_opt RP block
         {
-            $$ = dkc_create_for_statement($1, $4, $6, $8, $10);
+            $$ = create_for_statement($1, $4, $6, $8, $10);
         }
         ;
 foreach_statement
         : label_opt FOREACH LP IDENTIFIER COLON expression RP block
         {
-            $$ = dkc_create_foreach_statement($1, $4, $6, $8);
+            $$ = create_foreach_statement($1, $4, $6, $8);
         }
         ;
 expression_opt
@@ -364,7 +363,7 @@ expression_opt
 return_statement
         : RETURN_T expression_opt SEMICOLON
         {
-            $$ = dkc_create_return_statement($2);
+            $$ = create_return_statement($2);
         }
         ;
 identifier_opt
@@ -377,56 +376,56 @@ identifier_opt
 break_statement 
         : BREAK identifier_opt SEMICOLON
         {
-            $$ = dkc_create_break_statement($2);
+            $$ = create_break_statement($2);
         }
         ;
 continue_statement
         : CONTINUE identifier_opt SEMICOLON
         {
-            $$ = dkc_create_continue_statement($2);
+            $$ = create_continue_statement($2);
         }
         ;
 try_statement
         : TRY block CATCH LP IDENTIFIER RP block FINALLY block
         {
-            $$ = dkc_create_try_statement($2, $5, $7, $9);
+            $$ = create_try_statement($2, $5, $7, $9);
         }
         | TRY block FINALLY block
         {
-            $$ = dkc_create_try_statement($2, NULL, NULL, $4);
+            $$ = create_try_statement($2, NULL, NULL, $4);
         }
         | TRY block CATCH LP IDENTIFIER RP block
         {
-            $$ = dkc_create_try_statement($2, $5, $7, NULL);
+            $$ = create_try_statement($2, $5, $7, NULL);
         }
 throw_statement
         : THROW expression SEMICOLON
         {
-            $$ = dkc_create_throw_statement($2);
+            $$ = create_throw_statement($2);
         }
 declaration_statement
         : type_specifier IDENTIFIER SEMICOLON
         {
-            $$ = dkc_create_declaration_statement($1, $2, NULL);
+            $$ = create_declaration_statement($1, $2, NULL);
         }
         | type_specifier IDENTIFIER ASSIGN_T expression SEMICOLON
         {
-            $$ = dkc_create_declaration_statement($1, $2, $4);
+            $$ = create_declaration_statement($1, $2, $4);
         }
         ;
 block
         : LC
         {
-            $<block>$ = dkc_open_block();
+            $<block>$ = open_block();
         }
           statement_list RC
         {
-            $<block>$ = dkc_close_block($<block>2, $3);
+            $<block>$ = close_block($<block>2, $3);
         }
         | LC RC
         {
-            Block *empty_block = dkc_open_block();
-            $<block>$ = dkc_close_block(empty_block, NULL);
+            Block *empty_block = open_block();
+            $<block>$ = close_block(empty_block, NULL);
         }
         ;
 %%

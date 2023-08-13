@@ -1,0 +1,21 @@
+int print(string str);
+
+int a;
+
+int b = 10;
+int i;
+for(i = 0; i < 10; i ++) {
+    print("for stat");
+}
+
+if(i < 10) {
+    print("i < 10");
+}
+
+while(n) {
+    n --;
+    if(n == 0) {
+        break;
+    }
+    continue;
+}

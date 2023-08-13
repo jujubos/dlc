@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "DebugForDiksam",
+            "type": "cppdbg",
+            "request": "launch",
+            "args": ["./compiler/test/test.dk"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "linux": {
+                "MIMode": "gdb",
+                "miDebuggerPath": "gdb",
+                "program": "${workspaceFolder}/compiler/diskam"
+            },
+        }
+    ]
+}

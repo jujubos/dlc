@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "*.asm": "nasm",
+        "limits": "c",
+        "type_traits": "c",
+        "mem.h": "c"
+    }
+}

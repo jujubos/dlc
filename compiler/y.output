@@ -227,7 +227,7 @@ Nonterminals, with rules where they appear
     argument_list <argument_list> (63)
         on left: 15 16
         on right: 16 51
-    statement_list <statement_list> (64)
+    statement_list (64)
         on left: 17 18
         on right: 18 100
     expression <expression> (65)

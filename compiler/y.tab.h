@@ -182,12 +182,11 @@ union YYSTYPE
     ArgumentList        *argument_list;
     Expression          *expression;
     Statement           *statement;
-    StatementList       *statement_list;
     Block               *block;
     Elif                *elif;
     TypeSpecifier       *type_specifier;
 
-#line 191 "y.tab.h"
+#line 190 "y.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

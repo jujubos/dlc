@@ -23,3 +23,68 @@ int a = 10;
 a < 1;
 a + 2;
 !a;
+a;
+
+
+1, a < 1;
+a ++;
+10 --;
+
+func_noarg();
+
+int func_noarg() {
+    int t;
+    int s;
+    return 1;
+}
+
+a = 1;
+a += 2;
+a -= 3;
+a *= 4;
+a /= 5;
+a %= 6;
+
+int i;
+for(i = 1; i < 10; i ++) {
+    i < 10;
+    i += 1;
+}
+
+while(i < 10) {
+    i += 1;
+}
+
+if(i < 10) {
+    i ++;
+} elsif (i > 100) {
+    i --;
+} else {
+    
+}
+
+while(i < 10) {
+    i ++;
+    break;
+}
+
+for(i = 1; i >= 0; i --) {
+    if(i == 0) {
+        continue;
+    } else {
+        break;
+    }
+}
+
+int func_no_return() {
+    int a;
+}
+
+int func_with_args(int a, int b) {
+    int c = b;
+    if(a > b) {
+        return a;
+    }
+    return c;
+}
+

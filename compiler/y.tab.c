@@ -245,12 +245,11 @@ union YYSTYPE
     ArgumentList        *argument_list;
     Expression          *expression;
     Statement           *statement;
-    StatementList       *statement_list;
     Block               *block;
     Elif                *elif;
     TypeSpecifier       *type_specifier;
 
-#line 254 "y.tab.c"
+#line 253 "y.tab.c"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -755,17 +754,17 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int16 yyrline[] =
 {
-       0,    46,    46,    47,    50,    51,    59,    63,    67,    71,
-      77,    81,    85,    89,    95,    99,   105,   109,   115,   119,
-     125,   126,   132,   133,   137,   141,   145,   149,   153,   159,
-     160,   166,   167,   173,   174,   178,   184,   185,   189,   193,
-     197,   203,   204,   208,   214,   215,   219,   223,   229,   230,
-     234,   240,   241,   245,   249,   253,   259,   263,   267,   268,
-     269,   270,   271,   275,   281,   285,   286,   287,   288,   289,
-     290,   291,   292,   293,   294,   297,   301,   305,   309,   315,
-     316,   322,   329,   332,   338,   344,   351,   358,   361,   364,
-     371,   374,   377,   383,   389,   393,   397,   402,   407,   411,
-     418,   417,   425
+       0,    44,    44,    45,    48,    49,    55,    59,    63,    67,
+      73,    77,    84,    88,    97,   101,   107,   111,   117,   119,
+     123,   124,   130,   131,   135,   139,   143,   147,   151,   157,
+     158,   164,   165,   171,   172,   176,   182,   183,   187,   191,
+     195,   201,   202,   206,   212,   213,   217,   221,   227,   228,
+     232,   238,   239,   243,   247,   251,   257,   261,   265,   266,
+     267,   268,   269,   273,   279,   283,   284,   285,   286,   287,
+     288,   289,   290,   291,   292,   295,   299,   303,   307,   313,
+     314,   320,   327,   330,   336,   342,   349,   356,   359,   362,
+     369,   372,   375,   381,   387,   391,   395,   400,   405,   409,
+     416,   415,   423
 };
 #endif
 
@@ -1483,65 +1482,66 @@ yyreduce:
   switch (yyn)
     {
   case 5: /* definition_or_statement: statement  */
-#line 52 "diksam.y"
-        {
-            Compiler *comp = get_current_compiler();
-
-            chain_statement_list(comp->statement_list, (yyvsp[0].statement));
+#line 50 "diksam.y"
+        { 
+            chain_top_level_statement((yyvsp[0].statement));
         }
-#line 1493 "y.tab.c"
+#line 1490 "y.tab.c"
     break;
 
   case 6: /* type_specifier: BOOLEAN_T  */
-#line 60 "diksam.y"
+#line 56 "diksam.y"
         {
             (yyval.type_specifier) = create_typespecifier(BOOLEAN_TYPE);
         }
-#line 1501 "y.tab.c"
+#line 1498 "y.tab.c"
     break;
 
   case 7: /* type_specifier: INT_T  */
-#line 64 "diksam.y"
+#line 60 "diksam.y"
         {
             (yyval.type_specifier) = create_typespecifier(INT_TYPE);
         }
-#line 1509 "y.tab.c"
+#line 1506 "y.tab.c"
     break;
 
   case 8: /* type_specifier: DOUBLE_T  */
-#line 68 "diksam.y"
+#line 64 "diksam.y"
         {
             (yyval.type_specifier) = create_typespecifier(DOUBLE_TYPE);
         }
-#line 1517 "y.tab.c"
+#line 1514 "y.tab.c"
     break;
 
   case 9: /* type_specifier: STRING_T  */
-#line 72 "diksam.y"
+#line 68 "diksam.y"
         {
             (yyval.type_specifier) = create_typespecifier(STRING_TYPE);
         }
-#line 1525 "y.tab.c"
+#line 1522 "y.tab.c"
     break;
 
   case 10: /* function_definition: type_specifier IDENTIFIER LP parameter_list RP block  */
-#line 78 "diksam.y"
+#line 74 "diksam.y"
         {
             define_function((yyvsp[-5].type_specifier), (yyvsp[-4].identifier), (yyvsp[-2].parameter_list), (yyvsp[0].block));
         }
-#line 1533 "y.tab.c"
+#line 1530 "y.tab.c"
     break;
 
   case 11: /* function_definition: type_specifier IDENTIFIER LP RP block  */
-#line 82 "diksam.y"
+#line 78 "diksam.y"
         {
-            define_function((yyvsp[-4].type_specifier), (yyvsp[-3].identifier), NULL, (yyvsp[0].block));
+            ParameterList *para_list = (ParameterList*)Malloc(sizeof(ParameterList));
+            para_list->len = 0;
+            para_list->phead = NULL;
+            define_function((yyvsp[-4].type_specifier), (yyvsp[-3].identifier), para_list, (yyvsp[0].block));
         }
 #line 1541 "y.tab.c"
     break;
 
   case 12: /* function_definition: type_specifier IDENTIFIER LP parameter_list RP SEMICOLON  */
-#line 86 "diksam.y"
+#line 85 "diksam.y"
         {
             define_function((yyvsp[-5].type_specifier), (yyvsp[-4].identifier), (yyvsp[-2].parameter_list), NULL);
         }
@@ -1549,512 +1549,511 @@ yyreduce:
     break;
 
   case 13: /* function_definition: type_specifier IDENTIFIER LP RP SEMICOLON  */
-#line 90 "diksam.y"
+#line 89 "diksam.y"
         {
-            define_function((yyvsp[-4].type_specifier), (yyvsp[-3].identifier), NULL, NULL);
+            ParameterList *para_list = (ParameterList*)Malloc(sizeof(ParameterList));
+            para_list->len = 0;
+            para_list->phead = NULL;
+            define_function((yyvsp[-4].type_specifier), (yyvsp[-3].identifier), para_list, NULL);
         }
-#line 1557 "y.tab.c"
+#line 1560 "y.tab.c"
     break;
 
   case 14: /* parameter_list: type_specifier IDENTIFIER  */
-#line 96 "diksam.y"
+#line 98 "diksam.y"
         {
             (yyval.parameter_list) = create_parameter_list((yyvsp[-1].type_specifier), (yyvsp[0].identifier));
         }
-#line 1565 "y.tab.c"
+#line 1568 "y.tab.c"
     break;
 
   case 15: /* parameter_list: parameter_list COMMA type_specifier IDENTIFIER  */
-#line 100 "diksam.y"
+#line 102 "diksam.y"
         {
             (yyval.parameter_list) = create_and_chain_parameter((yyvsp[-3].parameter_list), (yyvsp[-1].type_specifier), (yyvsp[0].identifier));
         }
-#line 1573 "y.tab.c"
+#line 1576 "y.tab.c"
     break;
 
   case 16: /* argument_list: assignment_expression  */
-#line 106 "diksam.y"
+#line 108 "diksam.y"
         {
             (yyval.argument_list) = create_argument_list((yyvsp[0].expression));
         }
-#line 1581 "y.tab.c"
+#line 1584 "y.tab.c"
     break;
 
   case 17: /* argument_list: argument_list COMMA assignment_expression  */
-#line 110 "diksam.y"
+#line 112 "diksam.y"
         {
             (yyval.argument_list) = chain_argument_list((yyvsp[-2].argument_list), (yyvsp[0].expression));
         }
-#line 1589 "y.tab.c"
+#line 1592 "y.tab.c"
     break;
 
   case 18: /* statement_list: statement  */
-#line 116 "diksam.y"
-        {
-            (yyval.statement_list) = create_statement_list((yyvsp[0].statement));
-        }
-#line 1597 "y.tab.c"
+#line 118 "diksam.y"
+        {   chain_block_statement((yyvsp[0].statement)); }
+#line 1598 "y.tab.c"
     break;
 
   case 19: /* statement_list: statement_list statement  */
 #line 120 "diksam.y"
-        {
-            (yyval.statement_list) = chain_statement_list((yyvsp[-1].statement_list), (yyvsp[0].statement));
-        }
-#line 1605 "y.tab.c"
+        {   chain_block_statement((yyvsp[0].statement)); }
+#line 1604 "y.tab.c"
     break;
 
   case 21: /* expression: expression COMMA assignment_expression  */
-#line 127 "diksam.y"
+#line 125 "diksam.y"
         {
             (yyval.expression) = create_comma_expression((yyvsp[-2].expression), (yyvsp[0].expression));
         }
-#line 1613 "y.tab.c"
+#line 1612 "y.tab.c"
     break;
 
   case 23: /* assignment_expression: postfix_expression ASSIGN_T assignment_expression  */
-#line 134 "diksam.y"
+#line 132 "diksam.y"
         {
             (yyval.expression) = create_binary_expression(NORMAL_ASSIGN_EXPRESSION, (yyvsp[-2].expression), (yyvsp[0].expression));
         }
-#line 1621 "y.tab.c"
+#line 1620 "y.tab.c"
     break;
 
   case 24: /* assignment_expression: postfix_expression ADD_ASSIGN_T assignment_expression  */
-#line 138 "diksam.y"
+#line 136 "diksam.y"
         {
             (yyval.expression) = create_binary_expression(ADD_ASSIGN_EXPRESSION, (yyvsp[-2].expression), (yyvsp[0].expression));
         }
-#line 1629 "y.tab.c"
+#line 1628 "y.tab.c"
     break;
 
   case 25: /* assignment_expression: postfix_expression SUB_ASSIGN_T assignment_expression  */
-#line 142 "diksam.y"
+#line 140 "diksam.y"
         {
             (yyval.expression) = create_binary_expression(SUB_ASSIGN_EXPRESSION, (yyvsp[-2].expression), (yyvsp[0].expression));
         }
-#line 1637 "y.tab.c"
+#line 1636 "y.tab.c"
     break;
 
   case 26: /* assignment_expression: postfix_expression MUL_ASSIGN_T assignment_expression  */
-#line 146 "diksam.y"
+#line 144 "diksam.y"
         {
             (yyval.expression) = create_binary_expression(MUL_ASSIGN_EXPRESSION, (yyvsp[-2].expression), (yyvsp[0].expression));
         }
-#line 1645 "y.tab.c"
+#line 1644 "y.tab.c"
     break;
 
   case 27: /* assignment_expression: postfix_expression DIV_ASSIGN_T assignment_expression  */
-#line 150 "diksam.y"
+#line 148 "diksam.y"
         {
             (yyval.expression) = create_binary_expression(DIV_ASSIGN_EXPRESSION, (yyvsp[-2].expression), (yyvsp[0].expression));
         }
-#line 1653 "y.tab.c"
+#line 1652 "y.tab.c"
     break;
 
   case 28: /* assignment_expression: postfix_expression MOD_ASSIGN_T assignment_expression  */
-#line 154 "diksam.y"
+#line 152 "diksam.y"
         {
             (yyval.expression) = create_binary_expression(MOD_ASSIGN_EXPRESSION, (yyvsp[-2].expression), (yyvsp[0].expression));
         }
-#line 1661 "y.tab.c"
+#line 1660 "y.tab.c"
     break;
 
   case 30: /* logical_or_expression: logical_or_expression LOGICAL_OR logical_and_expression  */
-#line 161 "diksam.y"
+#line 159 "diksam.y"
         {
             (yyval.expression) = create_binary_expression(LOGICAL_OR_EXPRESSION, (yyvsp[-2].expression), (yyvsp[0].expression));
         }
-#line 1669 "y.tab.c"
+#line 1668 "y.tab.c"
     break;
 
   case 32: /* logical_and_expression: logical_and_expression LOGICAL_AND equality_expression  */
-#line 168 "diksam.y"
+#line 166 "diksam.y"
         {
             (yyval.expression) = create_binary_expression(LOGICAL_AND_EXPRESSION, (yyvsp[-2].expression), (yyvsp[0].expression));
         }
-#line 1677 "y.tab.c"
+#line 1676 "y.tab.c"
     break;
 
   case 34: /* equality_expression: equality_expression EQ relational_expression  */
-#line 175 "diksam.y"
+#line 173 "diksam.y"
         {
             (yyval.expression) = create_binary_expression(RELATION_EQ_EXPRESSION, (yyvsp[-2].expression), (yyvsp[0].expression));
         }
-#line 1685 "y.tab.c"
+#line 1684 "y.tab.c"
     break;
 
   case 35: /* equality_expression: equality_expression NE relational_expression  */
-#line 179 "diksam.y"
+#line 177 "diksam.y"
         {
             (yyval.expression) = create_binary_expression(RELATION_NE_EXPRESSION, (yyvsp[-2].expression), (yyvsp[0].expression));
         }
-#line 1693 "y.tab.c"
+#line 1692 "y.tab.c"
     break;
 
   case 37: /* relational_expression: relational_expression GT additive_expression  */
-#line 186 "diksam.y"
+#line 184 "diksam.y"
         {
             (yyval.expression) = create_binary_expression(RELATION_GT_EXPRESSION, (yyvsp[-2].expression), (yyvsp[0].expression));
         }
-#line 1701 "y.tab.c"
+#line 1700 "y.tab.c"
     break;
 
   case 38: /* relational_expression: relational_expression GE additive_expression  */
-#line 190 "diksam.y"
+#line 188 "diksam.y"
         {
             (yyval.expression) = create_binary_expression(RELATION_GE_EXPRESSION, (yyvsp[-2].expression), (yyvsp[0].expression));
         }
-#line 1709 "y.tab.c"
+#line 1708 "y.tab.c"
     break;
 
   case 39: /* relational_expression: relational_expression LT additive_expression  */
-#line 194 "diksam.y"
+#line 192 "diksam.y"
         {
             (yyval.expression) = create_binary_expression(RELATION_LT_EXPRESSION, (yyvsp[-2].expression), (yyvsp[0].expression));
         }
-#line 1717 "y.tab.c"
+#line 1716 "y.tab.c"
     break;
 
   case 40: /* relational_expression: relational_expression LE additive_expression  */
-#line 198 "diksam.y"
+#line 196 "diksam.y"
         {
             (yyval.expression) = create_binary_expression(RELATION_LE_EXPRESSION, (yyvsp[-2].expression), (yyvsp[0].expression));
         }
-#line 1725 "y.tab.c"
+#line 1724 "y.tab.c"
     break;
 
   case 42: /* additive_expression: additive_expression ADD multiplicative_expression  */
-#line 205 "diksam.y"
+#line 203 "diksam.y"
         {
             (yyval.expression) = create_binary_expression(ARITH_ADDITIVE_EXPRESSION, (yyvsp[-2].expression), (yyvsp[0].expression));
         }
-#line 1733 "y.tab.c"
+#line 1732 "y.tab.c"
     break;
 
   case 43: /* additive_expression: additive_expression SUB multiplicative_expression  */
-#line 209 "diksam.y"
+#line 207 "diksam.y"
         {
             (yyval.expression) = create_binary_expression(ARITH_SUBSTRACTION_EXPRESSION, (yyvsp[-2].expression), (yyvsp[0].expression));
         }
-#line 1741 "y.tab.c"
+#line 1740 "y.tab.c"
     break;
 
   case 45: /* multiplicative_expression: multiplicative_expression MUL unary_expression  */
-#line 216 "diksam.y"
+#line 214 "diksam.y"
         {
             (yyval.expression) = create_binary_expression(ARITH_MULTIPLICATION_EXPRESSION, (yyvsp[-2].expression), (yyvsp[0].expression));
         }
-#line 1749 "y.tab.c"
+#line 1748 "y.tab.c"
     break;
 
   case 46: /* multiplicative_expression: multiplicative_expression DIV unary_expression  */
-#line 220 "diksam.y"
+#line 218 "diksam.y"
         {
             (yyval.expression) = create_binary_expression(ARITH_DIVISION_EXPRESSION, (yyvsp[-2].expression), (yyvsp[0].expression));
         }
-#line 1757 "y.tab.c"
+#line 1756 "y.tab.c"
     break;
 
   case 47: /* multiplicative_expression: multiplicative_expression MOD unary_expression  */
-#line 224 "diksam.y"
+#line 222 "diksam.y"
         {
             (yyval.expression) = create_binary_expression(ARITH_MODULO_EXPRESSION, (yyvsp[-2].expression), (yyvsp[0].expression));
         }
-#line 1765 "y.tab.c"
+#line 1764 "y.tab.c"
     break;
 
   case 49: /* unary_expression: SUB unary_expression  */
-#line 231 "diksam.y"
+#line 229 "diksam.y"
         {
             (yyval.expression) = create_minus_expression((yyvsp[0].expression));
         }
-#line 1773 "y.tab.c"
+#line 1772 "y.tab.c"
     break;
 
   case 50: /* unary_expression: EXCLAMATION unary_expression  */
-#line 235 "diksam.y"
+#line 233 "diksam.y"
         {
             (yyval.expression) = create_logical_not_expression((yyvsp[0].expression));
         }
-#line 1781 "y.tab.c"
+#line 1780 "y.tab.c"
     break;
 
   case 52: /* postfix_expression: postfix_expression LP argument_list RP  */
-#line 242 "diksam.y"
+#line 240 "diksam.y"
         {
             (yyval.expression) = create_function_call_expression((yyvsp[-3].expression), (yyvsp[-1].argument_list));
         }
-#line 1789 "y.tab.c"
+#line 1788 "y.tab.c"
     break;
 
   case 53: /* postfix_expression: postfix_expression LP RP  */
-#line 246 "diksam.y"
+#line 244 "diksam.y"
         {
             (yyval.expression) = create_function_call_expression((yyvsp[-2].expression), NULL);
         }
-#line 1797 "y.tab.c"
+#line 1796 "y.tab.c"
     break;
 
   case 54: /* postfix_expression: postfix_expression INCREMENT  */
-#line 250 "diksam.y"
+#line 248 "diksam.y"
         {
             (yyval.expression) = create_incdec_expression(POST_INCREMENT_EXPRESSION, (yyvsp[-1].expression));
         }
-#line 1805 "y.tab.c"
+#line 1804 "y.tab.c"
     break;
 
   case 55: /* postfix_expression: postfix_expression DECREMENT  */
-#line 254 "diksam.y"
+#line 252 "diksam.y"
         {
             (yyval.expression) = create_incdec_expression(POST_DECREMENT_EXPRESSION, (yyvsp[-1].expression));
         }
-#line 1813 "y.tab.c"
+#line 1812 "y.tab.c"
     break;
 
   case 56: /* primary_expression: LP expression RP  */
-#line 260 "diksam.y"
+#line 258 "diksam.y"
         {
             (yyval.expression) = (yyvsp[-1].expression);
         }
-#line 1821 "y.tab.c"
+#line 1820 "y.tab.c"
     break;
 
   case 57: /* primary_expression: IDENTIFIER  */
-#line 264 "diksam.y"
+#line 262 "diksam.y"
         {
             (yyval.expression) = create_identifier_expression((yyvsp[0].identifier));
         }
-#line 1829 "y.tab.c"
+#line 1828 "y.tab.c"
     break;
 
   case 62: /* primary_expression: TRUE_T  */
-#line 272 "diksam.y"
+#line 270 "diksam.y"
         {
             (yyval.expression) = create_boolean_expression(TRUE);
         }
-#line 1837 "y.tab.c"
+#line 1836 "y.tab.c"
     break;
 
   case 63: /* primary_expression: FALSE_T  */
-#line 276 "diksam.y"
+#line 274 "diksam.y"
         {
             (yyval.expression) = create_boolean_expression(FALSE);
         }
-#line 1845 "y.tab.c"
+#line 1844 "y.tab.c"
     break;
 
   case 64: /* statement: expression SEMICOLON  */
-#line 282 "diksam.y"
+#line 280 "diksam.y"
         {
           (yyval.statement) = create_expression_statement((yyvsp[-1].expression));
         }
-#line 1853 "y.tab.c"
+#line 1852 "y.tab.c"
     break;
 
   case 75: /* if_statement: IF LP expression RP block  */
-#line 298 "diksam.y"
+#line 296 "diksam.y"
         {
             (yyval.statement) = create_if_statement((yyvsp[-2].expression), (yyvsp[0].block), NULL, NULL);
         }
-#line 1861 "y.tab.c"
+#line 1860 "y.tab.c"
     break;
 
   case 76: /* if_statement: IF LP expression RP block ELSE block  */
-#line 302 "diksam.y"
+#line 300 "diksam.y"
         {
             (yyval.statement) = create_if_statement((yyvsp[-4].expression), (yyvsp[-2].block), NULL, (yyvsp[0].block));
         }
-#line 1869 "y.tab.c"
+#line 1868 "y.tab.c"
     break;
 
   case 77: /* if_statement: IF LP expression RP block elif_list  */
-#line 306 "diksam.y"
+#line 304 "diksam.y"
         {
             (yyval.statement) = create_if_statement((yyvsp[-3].expression), (yyvsp[-1].block), (yyvsp[0].elif), NULL);
         }
-#line 1877 "y.tab.c"
+#line 1876 "y.tab.c"
     break;
 
   case 78: /* if_statement: IF LP expression RP block elif_list ELSE block  */
-#line 310 "diksam.y"
+#line 308 "diksam.y"
         {
             (yyval.statement) = create_if_statement((yyvsp[-5].expression), (yyvsp[-3].block), (yyvsp[-2].elif), (yyvsp[0].block));
         }
-#line 1885 "y.tab.c"
+#line 1884 "y.tab.c"
     break;
 
   case 80: /* elif_list: elif_list elif  */
-#line 317 "diksam.y"
+#line 315 "diksam.y"
         {
             (yyval.elif) = chain_elif_list((yyvsp[-1].elif), (yyvsp[0].elif));
         }
-#line 1893 "y.tab.c"
+#line 1892 "y.tab.c"
     break;
 
   case 81: /* elif: ELSIF LP expression RP block  */
-#line 323 "diksam.y"
+#line 321 "diksam.y"
         {
             (yyval.elif) = create_elif((yyvsp[-2].expression), (yyvsp[0].block));
         }
-#line 1901 "y.tab.c"
+#line 1900 "y.tab.c"
     break;
 
   case 82: /* label_opt: %empty  */
-#line 329 "diksam.y"
+#line 327 "diksam.y"
         {
             (yyval.identifier) = NULL;
         }
-#line 1909 "y.tab.c"
+#line 1908 "y.tab.c"
     break;
 
   case 83: /* label_opt: IDENTIFIER COLON  */
-#line 333 "diksam.y"
+#line 331 "diksam.y"
         {
             (yyval.identifier) = (yyvsp[-1].identifier);
         }
-#line 1917 "y.tab.c"
+#line 1916 "y.tab.c"
     break;
 
   case 84: /* while_statement: label_opt WHILE LP expression RP block  */
-#line 339 "diksam.y"
+#line 337 "diksam.y"
         {
             (yyval.statement) = create_while_statement((yyvsp[-5].identifier), (yyvsp[-2].expression), (yyvsp[0].block));
         }
-#line 1925 "y.tab.c"
+#line 1924 "y.tab.c"
     break;
 
   case 85: /* for_statement: label_opt FOR LP expression_opt SEMICOLON expression_opt SEMICOLON expression_opt RP block  */
-#line 346 "diksam.y"
+#line 344 "diksam.y"
         {
             (yyval.statement) = create_for_statement((yyvsp[-9].identifier), (yyvsp[-6].expression), (yyvsp[-4].expression), (yyvsp[-2].expression), (yyvsp[0].block));
         }
-#line 1933 "y.tab.c"
+#line 1932 "y.tab.c"
     break;
 
   case 86: /* foreach_statement: label_opt FOREACH LP IDENTIFIER COLON expression RP block  */
-#line 352 "diksam.y"
+#line 350 "diksam.y"
         {
             (yyval.statement) = create_foreach_statement((yyvsp[-7].identifier), (yyvsp[-4].identifier), (yyvsp[-2].expression), (yyvsp[0].block));
         }
-#line 1941 "y.tab.c"
+#line 1940 "y.tab.c"
     break;
 
   case 87: /* expression_opt: %empty  */
-#line 358 "diksam.y"
+#line 356 "diksam.y"
         {
             (yyval.expression) = NULL;
         }
-#line 1949 "y.tab.c"
+#line 1948 "y.tab.c"
     break;
 
   case 89: /* return_statement: RETURN_T expression_opt SEMICOLON  */
-#line 365 "diksam.y"
+#line 363 "diksam.y"
         {
             (yyval.statement) = create_return_statement((yyvsp[-1].expression));
         }
-#line 1957 "y.tab.c"
+#line 1956 "y.tab.c"
     break;
 
   case 90: /* identifier_opt: %empty  */
-#line 371 "diksam.y"
+#line 369 "diksam.y"
         {
             (yyval.identifier) = NULL;
         }
-#line 1965 "y.tab.c"
+#line 1964 "y.tab.c"
     break;
 
   case 92: /* break_statement: BREAK identifier_opt SEMICOLON  */
-#line 378 "diksam.y"
+#line 376 "diksam.y"
         {
             (yyval.statement) = create_break_statement((yyvsp[-1].identifier));
         }
-#line 1973 "y.tab.c"
+#line 1972 "y.tab.c"
     break;
 
   case 93: /* continue_statement: CONTINUE identifier_opt SEMICOLON  */
-#line 384 "diksam.y"
+#line 382 "diksam.y"
         {
             (yyval.statement) = create_continue_statement((yyvsp[-1].identifier));
         }
-#line 1981 "y.tab.c"
+#line 1980 "y.tab.c"
     break;
 
   case 94: /* try_statement: TRY block CATCH LP IDENTIFIER RP block FINALLY block  */
-#line 390 "diksam.y"
+#line 388 "diksam.y"
         {
             (yyval.statement) = create_try_statement((yyvsp[-7].block), (yyvsp[-4].identifier), (yyvsp[-2].block), (yyvsp[0].block));
         }
-#line 1989 "y.tab.c"
+#line 1988 "y.tab.c"
     break;
 
   case 95: /* try_statement: TRY block FINALLY block  */
-#line 394 "diksam.y"
+#line 392 "diksam.y"
         {
             (yyval.statement) = create_try_statement((yyvsp[-2].block), NULL, NULL, (yyvsp[0].block));
         }
-#line 1997 "y.tab.c"
+#line 1996 "y.tab.c"
     break;
 
   case 96: /* try_statement: TRY block CATCH LP IDENTIFIER RP block  */
-#line 398 "diksam.y"
+#line 396 "diksam.y"
         {
             (yyval.statement) = create_try_statement((yyvsp[-5].block), (yyvsp[-2].identifier), (yyvsp[0].block), NULL);
         }
-#line 2005 "y.tab.c"
+#line 2004 "y.tab.c"
     break;
 
   case 97: /* throw_statement: THROW expression SEMICOLON  */
-#line 403 "diksam.y"
+#line 401 "diksam.y"
         {
             (yyval.statement) = create_throw_statement((yyvsp[-1].expression));
         }
-#line 2013 "y.tab.c"
+#line 2012 "y.tab.c"
     break;
 
   case 98: /* declaration_statement: type_specifier IDENTIFIER SEMICOLON  */
-#line 408 "diksam.y"
+#line 406 "diksam.y"
         {
             (yyval.statement) = create_declaration_statement((yyvsp[-2].type_specifier), (yyvsp[-1].identifier), NULL);
         }
-#line 2021 "y.tab.c"
+#line 2020 "y.tab.c"
     break;
 
   case 99: /* declaration_statement: type_specifier IDENTIFIER ASSIGN_T expression SEMICOLON  */
-#line 412 "diksam.y"
+#line 410 "diksam.y"
         {
             (yyval.statement) = create_declaration_statement((yyvsp[-4].type_specifier), (yyvsp[-3].identifier), (yyvsp[-1].expression));
         }
-#line 2029 "y.tab.c"
+#line 2028 "y.tab.c"
     break;
 
   case 100: /* @1: %empty  */
-#line 418 "diksam.y"
+#line 416 "diksam.y"
         {
             (yyval.block) = open_block();
         }
-#line 2037 "y.tab.c"
+#line 2036 "y.tab.c"
     break;
 
   case 101: /* block: LC @1 statement_list RC  */
-#line 422 "diksam.y"
+#line 420 "diksam.y"
         {
-            (yyval.block) = close_block((yyvsp[-2].block), (yyvsp[-1].statement_list));
+            (yyval.block) = close_block((yyvsp[-2].block));
         }
-#line 2045 "y.tab.c"
+#line 2044 "y.tab.c"
     break;
 
   case 102: /* block: LC RC  */
-#line 426 "diksam.y"
+#line 424 "diksam.y"
         {
             Block *empty_block = open_block();
-            (yyval.block) = close_block(empty_block, NULL);
+            (yyval.block) = close_block(empty_block);
         }
-#line 2054 "y.tab.c"
+#line 2053 "y.tab.c"
     break;
 
 
-#line 2058 "y.tab.c"
+#line 2057 "y.tab.c"
 
       default: break;
     }
@@ -2247,5 +2246,5 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 431 "diksam.y"
+#line 429 "diksam.y"
 

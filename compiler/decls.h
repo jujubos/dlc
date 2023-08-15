@@ -194,6 +194,7 @@ struct Parameter {
 
 struct ParameterList {
     Parameter *phead;
+    int       len;
 };
 
 struct Block {
@@ -208,7 +209,7 @@ struct FunctionDefinition {
     Identifier            *ident;
     ParameterList         *param_list;
     Block                 *block;
-    DeclarationStatement  *local_varaible;
+    Statement             **local_variables;
     int                   local_variable_cnt;
     int                   index;
     FunctionDefinition    *next;
@@ -279,9 +280,11 @@ struct ThrowStatement {
 };
 
 struct DeclarationStatement {
-    TypeSpecifier          *type;
-    Identifier             *ident;
-    Expression             *initializer;
+    TypeSpecifier   *type;
+    Identifier      *ident;
+    Expression      *initializer;
+    int             index;
+    int             is_local;
 };
 
 struct Statement {
@@ -304,10 +307,12 @@ struct Statement {
 
 struct StatementList {
     Statement *phead;
+    int       len;
 };
 
 struct FunctionList {
     FunctionDefinition *phead;
+    int                len;
 };
 
 /* 
@@ -328,7 +333,6 @@ struct FunctionList {
 */
 struct Compiler {
     FunctionList                *function_list;
-    int                         function_count;
     StatementList               *statement_list;
     StatementList               *declaration_stat_list;
     int                         current_line_number;
@@ -355,7 +359,8 @@ ArgumentList* create_argument_list(Expression *expr);
 ArgumentList* chain_argument_list(ArgumentList *arg_list, Expression *expr);
 Expression* create_comma_expression(Expression *left, Expression *right);
 StatementList* create_statement_list(Statement *stat);
-StatementList* chain_statement_list(StatementList* stat_list, Statement *stat);
+void chain_block_statement(Statement* stat);
+void chain_top_level_statement(Statement* stat);
 Expression* create_binary_expression(ExpressionKind kind, Expression *left, Expression *right);
 Expression* create_minus_expression(Expression *right);
 Expression* create_logical_not_expression(Expression *right);
@@ -380,7 +385,7 @@ Statement* create_try_statement(
 Statement* create_throw_statement(Expression *except);
 Statement* create_declaration_statement(TypeSpecifier *ts, Identifier *ident, Expression *initializer);
 Block* open_block();
-Block* close_block(Block *block, StatementList *stat_list);
+Block* close_block(Block *block);
 TypeSpecifier* create_typespecifier(ValueType typ);
 
 /* common.c */
@@ -409,7 +414,7 @@ void* pop_stk(struct Stack *stk);
 int stk_size(struct Stack *stk);
 
 /* debug.c */
-void disassemble(Compiler *comp);
+void disassemble();
 
 /* function_end */
 

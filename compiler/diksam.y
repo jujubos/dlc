@@ -9,7 +9,6 @@
     ArgumentList        *argument_list;
     Expression          *expression;
     Statement           *statement;
-    StatementList       *statement_list;
     Block               *block;
     Elif                *elif;
     TypeSpecifier       *type_specifier;
@@ -36,7 +35,6 @@
         if_statement while_statement for_statement foreach_statement
         return_statement break_statement continue_statement try_statement
         throw_statement declaration_statement
-%type   <statement_list> statement_list
 %type   <block> block
 %type   <elif> elif elif_list
 %type   <identifier> identifier_opt label_opt
@@ -49,10 +47,8 @@ translation_unit
 definition_or_statement
         : function_definition
         | statement
-        {
-            Compiler *comp = get_current_compiler();
-
-            chain_statement_list(comp->statement_list, $1);
+        { 
+            chain_top_level_statement($1);
         }
         ;
 type_specifier
@@ -80,7 +76,10 @@ function_definition
         }
         | type_specifier IDENTIFIER LP RP block
         {
-            define_function($1, $2, NULL, $5);
+            ParameterList *para_list = (ParameterList*)Malloc(sizeof(ParameterList));
+            para_list->len = 0;
+            para_list->phead = NULL;
+            define_function($1, $2, para_list, $5);
         }
         | type_specifier IDENTIFIER LP parameter_list RP SEMICOLON
         {
@@ -88,7 +87,10 @@ function_definition
         }
         | type_specifier IDENTIFIER LP RP SEMICOLON
         {
-            define_function($1, $2, NULL, NULL);
+            ParameterList *para_list = (ParameterList*)Malloc(sizeof(ParameterList));
+            para_list->len = 0;
+            para_list->phead = NULL;
+            define_function($1, $2, para_list, NULL);
         }
         ;
 parameter_list
@@ -113,13 +115,9 @@ argument_list
         ;
 statement_list
         : statement
-        {
-            $$ = create_statement_list($1);
-        }
+        {   chain_block_statement($1); }
         | statement_list statement
-        {
-            $$ = chain_statement_list($1, $2);
-        }
+        {   chain_block_statement($2); }
         ;
 expression
         : assignment_expression
@@ -420,12 +418,12 @@ block
         }
           statement_list RC
         {
-            $<block>$ = close_block($<block>2, $3);
+            $<block>$ = close_block($<block>2);
         }
         | LC RC
         {
             Block *empty_block = open_block();
-            $<block>$ = close_block(empty_block, NULL);
+            $<block>$ = close_block(empty_block);
         }
         ;
 %%

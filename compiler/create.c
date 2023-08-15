@@ -38,9 +38,9 @@ create_function_definition (
     func_def->ident = ident;
     func_def->param_list = param_list;
     func_def->block = block;
-    func_def->local_varaible = NULL;
+    func_def->local_variables = NULL;
     func_def->local_variable_cnt = 0;
-    func_def->index = comp->function_count ++;
+    func_def->index = comp->function_list->len;
     func_def->next = NULL;
 
     return func_def;
@@ -72,6 +72,7 @@ void define_function(TypeSpecifier *ts, Identifier *ident, ParameterList *para_l
             ;
         pos->next = func_def;
     }
+    comp->function_list->len ++;
 }
 
 ParameterList* create_parameter_list(TypeSpecifier *ts, Identifier *ident) {
@@ -85,6 +86,7 @@ ParameterList* create_parameter_list(TypeSpecifier *ts, Identifier *ident) {
     
     param_list = Malloc(sizeof(ParameterList));
     param_list->phead = param;
+    param_list->len = 1;
     
     return param_list;    
 }
@@ -100,6 +102,7 @@ ParameterList* create_and_chain_parameter(ParameterList *param_list, TypeSpecifi
     for(pos = param_list->phead; pos->next; pos=pos->next)
         ;
     pos->next = param;
+    param_list->len ++;
 
     return param_list;
 }
@@ -130,28 +133,64 @@ ArgumentList* chain_argument_list(ArgumentList* arg_list, Expression *expr) {
     return arg_list;
 }
 
-StatementList* create_statement_list(Statement *stat) {
+void chain_declaration_statement(Statement* stat) {
+    Statement *pos_stat;
     StatementList* stat_list;
-
-    stat_list = (StatementList*)Malloc(sizeof(StatementList));
-    stat_list->phead = stat;
-    stat_list->phead->next = NULL;
-
-    return stat_list;
+ 
+    stat_list = get_current_compiler()->current_block->declaration_stat_list;
+    if(stat_list->phead != NULL) {
+        for(pos_stat = stat_list->phead; pos_stat->next; pos_stat=pos_stat->next)
+                ;
+        pos_stat->next = stat;
+    } else {
+        stat_list->phead = stat;        
+    }
+    stat_list->len ++;
 }
 
-StatementList* chain_statement_list(StatementList* stat_list, Statement *stat) {
-    Statement *pos;
-    
+void chain_nondecl_statement(Statement* stat) {
+    Statement *pos_stat;
+    StatementList* stat_list;
+ 
+    stat_list = get_current_compiler()->current_block->stat_list;
     if(stat_list->phead != NULL) {
-        for(pos = stat_list->phead; pos->next; pos = pos->next) 
+        for(pos_stat = stat_list->phead; pos_stat->next; pos_stat=pos_stat->next)
+                ;
+        pos_stat->next = stat;
+    } else {
+        stat_list->phead = stat;        
+    }
+    stat_list->len ++;
+}
+
+void chain_block_statement(Statement *stat) {
+    if(stat->kind != DECLARATION_STATEMENT) {
+        chain_nondecl_statement(stat);
+    } else {
+        chain_declaration_statement(stat);
+    }
+}
+
+void chain_top_level_statement(Statement *stat) {
+    Compiler *comp;
+    Statement *pos;
+    StatementList* stat_list;
+
+    comp = get_current_compiler();
+    if(stat->kind != DECLARATION_STATEMENT) {
+        stat_list = comp->statement_list;
+    } else {
+        stat_list = comp->declaration_stat_list;
+    }
+
+    if(stat_list->phead != NULL) {
+        for(pos = stat_list->phead; pos->next; pos = pos->next)
             ;
         pos->next = stat;
     } else {
         stat_list->phead = stat;
     }
-    
-    return stat_list;
+    stat_list->len ++;
 }
 
 Expression* create_comma_expression(Expression *left, Expression *right) {
@@ -429,20 +468,22 @@ Block* open_block() {
     block = (Block*)Malloc(sizeof(Block));
     block->outer_block = comp->current_block;
     block->type = UNDEFINED_BLOCK;
-    block->declaration_stat_list = NULL;
-    block->stat_list = NULL;
+    block->declaration_stat_list = (StatementList*)Malloc(sizeof(StatementList));
+    block->declaration_stat_list->phead = NULL;
+    block->declaration_stat_list->len = 0;
+    block->stat_list = (StatementList*)Malloc(sizeof(StatementList));
+    block->stat_list->phead = NULL;
+    block->stat_list->len = 0;
     comp->current_block = block;
     
     return block;
 }
 
-Block* close_block(Block *block, StatementList *stat_list) {
+Block* close_block(Block *block) {
     Compiler *comp;
-    
+
     comp = get_current_compiler();
     comp->current_block = block->outer_block;
-
-    block->stat_list = stat_list;
 
     return block;
 }

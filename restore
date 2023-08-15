@@ -7,3 +7,6 @@
 当前进度: walk ast for semantic analysis
     | 目前进度 walk_statement_list之walk_expression_statement完成90%, 还剩几个表达式(++, --, COMMA_EXPRESSION)需要补充
     | walk_declaration_statement完成
+    | 目前进度 if,for,while,foreach,return,break,continue等语句的语义分析完成，意味着walk_ast_for_semantic_analysis完成
+下一步: walk_ast_for_gen_code
+    |

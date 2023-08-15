@@ -28,6 +28,7 @@ FunctionList* alloc_function_list() {
 
     func_list = (FunctionList*)Malloc(sizeof(FunctionList));
     func_list->phead = NULL;
+    func_list->len = 0;
     
     return func_list;
 }
@@ -37,6 +38,7 @@ StatementList* alloc_statement_list() {
 
     stat_list = (StatementList*)Malloc(sizeof(StatementList));
     stat_list->phead = NULL;
+    stat_list->len = 0;
     
     return stat_list;
 }
@@ -52,7 +54,6 @@ Compiler* create_compiler() {
     comp->compile_storage = storage;
     comp->current_block = NULL;
     comp->current_line_number = 1;
-    comp->function_count = 0;
     comp->function_list = alloc_function_list();
     comp->statement_list = alloc_statement_list();
     comp->declaration_stat_list = alloc_statement_list();

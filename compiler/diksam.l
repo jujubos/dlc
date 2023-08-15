@@ -156,21 +156,21 @@ increment_line_number(void)
 }
 <INITIAL>[1-9][0-9]* {
     Expression  *expression = alloc_expression(INT_LITERAL_EXPRESSION);
-    expression->type = INT_TYPE;
+    expression->type = create_typespecifier(INT_TYPE);
     sscanf(yytext, "%d", &expression->int_v);
     yylval.expression = expression;
     return INT_LITERAL;
 }
 <INITIAL>"0" {
     Expression  *expression = alloc_expression(INT_LITERAL_EXPRESSION);
-    expression->type = INT_TYPE;
+    expression->type = create_typespecifier(INT_TYPE);
     expression->int_v = 0;
     yylval.expression = expression;
     return INT_LITERAL;
 }
 <INITIAL>[0-9]+\.[0-9]+ {
     Expression  *expression = alloc_expression(DOUBLE_LITERAL_EXPRESSION);
-    expression->type = DOUBLE_TYPE;
+    expression->type = create_typespecifier(DOUBLE_TYPE);
     sscanf(yytext, "%lf", &expression->double_v);
     yylval.expression = expression;
     return DOUBLE_LITERAL;
@@ -211,7 +211,7 @@ increment_line_number(void)
 <CC_COMMENT>.   ;
 <STRING_LITERAL_STATE>\"        {
     Expression *expression = alloc_expression(STRING_LITERAL_EXPRESSION);
-    expression->type = STRING_TYPE;
+    expression->type = create_typespecifier(STRING_TYPE);
     expression->string_v = close_string_literal();
     yylval.expression = expression;
     BEGIN INITIAL;

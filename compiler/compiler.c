@@ -4,10 +4,6 @@
 extern int yyparse(void);
 extern FILE *yyin;
 
-Executable* walk_ast_for_semantic_analysis(Compiler *comp) {
-    return NULL;
-}
-
 Executable* walk_ast_for_gen_code(Compiler *comp) {
     return NULL;
 }
@@ -45,15 +41,6 @@ StatementList* alloc_statement_list() {
     return stat_list;
 }
 
-DeclarationStatementList* alloc_declaration_stat_list() {
-    DeclarationStatementList *decl_stat_list;
-
-    decl_stat_list = (DeclarationStatementList*)Malloc(sizeof(DeclarationStatementList));
-    decl_stat_list->phead = NULL;
-    
-    return decl_stat_list;
-}
-
 Compiler* create_compiler() {
     MEM_Storage  storage;
     Compiler     *comp;
@@ -68,7 +55,7 @@ Compiler* create_compiler() {
     comp->function_count = 0;
     comp->function_list = alloc_function_list();
     comp->statement_list = alloc_statement_list();
-    comp->declaration_stat_list = alloc_declaration_stat_list();
+    comp->declaration_stat_list = alloc_statement_list();
 
     return comp;
 }

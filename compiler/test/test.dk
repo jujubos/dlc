@@ -1,21 +1,25 @@
-int print(string str);
+1 + 1;
+1 - 1.1;
+1 * 1;
+1 / true;
+1 % true;
 
-int a;
+1 == 1;
+1 != true;
+1 > 1;
+1 < 1;
+1 >= 1;
+1 <= 1;
 
-int b = 10;
-int i;
-for(i = 0; i < 10; i ++) {
-    print("for stat");
-}
+1 && 1;
+1 || 1;
+!1;
 
-if(i < 10) {
-    print("i < 10");
-}
+1 + "1";
 
-while(n) {
-    n --;
-    if(n == 0) {
-        break;
-    }
-    continue;
-}
+-1;
+
+int a = 10;
+a < 1;
+a + 2;
+!a;

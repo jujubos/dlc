@@ -5,4 +5,5 @@
     | 目前进度 语法分析--建立AST完成
     | 有时间补充：打印信息，便于检查正确性和调试
 当前进度: walk ast for semantic analysis
-
+    | 目前进度 walk_statement_list之walk_expression_statement完成90%, 还剩几个表达式(++, --, COMMA_EXPRESSION)需要补充
+    | walk_declaration_statement完成

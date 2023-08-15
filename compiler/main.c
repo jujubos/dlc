@@ -18,6 +18,7 @@ int main(int argc, char **argv) {
 
     compiler = create_compiler();
     compile(compiler, fp);
+    disassemble(compiler);
     
     // free_compiler(compile);
     return 0;

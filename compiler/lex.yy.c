@@ -1176,7 +1176,7 @@ YY_RULE_SETUP
 #line 157 "diksam.l"
 {
     Expression  *expression = alloc_expression(INT_LITERAL_EXPRESSION);
-    expression->type = INT_TYPE;
+    expression->type = create_typespecifier(INT_TYPE);
     sscanf(yytext, "%d", &expression->int_v);
     yylval.expression = expression;
     return INT_LITERAL;
@@ -1187,7 +1187,7 @@ YY_RULE_SETUP
 #line 164 "diksam.l"
 {
     Expression  *expression = alloc_expression(INT_LITERAL_EXPRESSION);
-    expression->type = INT_TYPE;
+    expression->type = create_typespecifier(INT_TYPE);
     expression->int_v = 0;
     yylval.expression = expression;
     return INT_LITERAL;
@@ -1198,7 +1198,7 @@ YY_RULE_SETUP
 #line 171 "diksam.l"
 {
     Expression  *expression = alloc_expression(DOUBLE_LITERAL_EXPRESSION);
-    expression->type = DOUBLE_TYPE;
+    expression->type = create_typespecifier(DOUBLE_TYPE);
     sscanf(yytext, "%lf", &expression->double_v);
     yylval.expression = expression;
     return DOUBLE_LITERAL;
@@ -1290,7 +1290,7 @@ YY_RULE_SETUP
 #line 212 "diksam.l"
 {
     Expression *expression = alloc_expression(STRING_LITERAL_EXPRESSION);
-    expression->type = STRING_TYPE;
+    expression->type = create_typespecifier(STRING_TYPE);
     expression->string_v = close_string_literal();
     yylval.expression = expression;
     BEGIN INITIAL;

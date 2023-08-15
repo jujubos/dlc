@@ -58,19 +58,19 @@ definition_or_statement
 type_specifier
         : BOOLEAN_T
         {
-            $$ = create_typespecifer(BOOLEAN_TYPE);
+            $$ = create_typespecifier(BOOLEAN_TYPE);
         }
         | INT_T
         {
-            $$ = create_typespecifer(INT_TYPE);
+            $$ = create_typespecifier(INT_TYPE);
         }
         | DOUBLE_T
         {
-            $$ = create_typespecifer(DOUBLE_TYPE);
+            $$ = create_typespecifier(DOUBLE_TYPE);
         }
         | STRING_T
         {
-            $$ = create_typespecifer(STRING_TYPE);
+            $$ = create_typespecifier(STRING_TYPE);
         }
         ;
 function_definition

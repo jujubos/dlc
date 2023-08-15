@@ -21,6 +21,10 @@ void* Malloc(size_t sz) {
     return p;
 }
 
+void* Realloc(void* ptr, size_t sz) {
+    return MEM_realloc(ptr, sz);
+}
+
 void error_message(int linenum, CompileError err) {
     switch (err) {
         case FUNCTION_REDEFINITION:

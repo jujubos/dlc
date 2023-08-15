@@ -1495,7 +1495,7 @@ yyreduce:
   case 6: /* type_specifier: BOOLEAN_T  */
 #line 60 "diksam.y"
         {
-            (yyval.type_specifier) = create_typespecifer(BOOLEAN_TYPE);
+            (yyval.type_specifier) = create_typespecifier(BOOLEAN_TYPE);
         }
 #line 1501 "y.tab.c"
     break;
@@ -1503,7 +1503,7 @@ yyreduce:
   case 7: /* type_specifier: INT_T  */
 #line 64 "diksam.y"
         {
-            (yyval.type_specifier) = create_typespecifer(INT_TYPE);
+            (yyval.type_specifier) = create_typespecifier(INT_TYPE);
         }
 #line 1509 "y.tab.c"
     break;
@@ -1511,7 +1511,7 @@ yyreduce:
   case 8: /* type_specifier: DOUBLE_T  */
 #line 68 "diksam.y"
         {
-            (yyval.type_specifier) = create_typespecifer(DOUBLE_TYPE);
+            (yyval.type_specifier) = create_typespecifier(DOUBLE_TYPE);
         }
 #line 1517 "y.tab.c"
     break;
@@ -1519,7 +1519,7 @@ yyreduce:
   case 9: /* type_specifier: STRING_T  */
 #line 72 "diksam.y"
         {
-            (yyval.type_specifier) = create_typespecifer(STRING_TYPE);
+            (yyval.type_specifier) = create_typespecifier(STRING_TYPE);
         }
 #line 1525 "y.tab.c"
     break;

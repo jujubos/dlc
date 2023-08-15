@@ -78,7 +78,25 @@ typedef enum {
     INT_LITERAL_EXPRESSION,
     DOUBLE_LITERAL_EXPRESSION,
     STRING_LITERAL_EXPRESSION,
+    CAST_EXPRESSION
 } ExpressionKind;
+
+typedef enum {
+    UNKNOWN,
+    BOOLEAN_TO_INT,
+    BOOLEAN_TO_DOUBLE,
+    BOOLEAN_TO_STRINg,
+    INT_TO_BOOLEAN,
+    INT_TO_DOUBLE,
+    INT_TO_STRING,
+    DOUBLE_TO_BOOLEAN,
+    DOUBLE_TO_INT,
+    DOUBLE_TO_STRING,
+    STRING_TO_BOOLEAN,
+    STRING_TO_INT,
+    STRING_TO_DOUBLE
+} CastType;
+
 /* enum_end */
 
 /* typedef_begin */
@@ -111,7 +129,9 @@ typedef struct Executable Executable;
 typedef struct StatementList StatementList;
 typedef struct FunctionList FunctionList;
 typedef struct ForeachStatement ForeachStatement;
-typedef struct DeclarationStatementList DeclarationStatementList;
+/* stack.c */
+typedef struct Stack Stack;
+
 /* typedef_end */
 struct TypeSpecifier {
     ValueType basic_type;
@@ -141,7 +161,7 @@ struct ArgumentList {
 };
 
 struct Expression {
-    ValueType        type;
+    TypeSpecifier    *type;
     ExpressionKind   kind;
     int              linenum;
     union {
@@ -159,6 +179,10 @@ struct Expression {
         }  binary_expr;
         Expression  *unary_operand;
         Identifier  *ident;
+        struct {
+            CastType   type;
+            Expression *casted_expr;
+        }  cast_expr;
     };
 };
 
@@ -176,7 +200,7 @@ struct Block {
     BlockType               type;
     StatementList           *stat_list;
     Block                   *outer_block;
-    DeclarationStatement    *declaration_list;
+    StatementList           *declaration_stat_list;
 };
 
 struct FunctionDefinition {
@@ -237,7 +261,10 @@ struct ContinueStatement {
 };
 
 struct Identifier {
-    char *name;
+    char                  *name;
+    int                   is_func;
+    Statement             *decl;
+    FunctionDefinition    *func_def;
 };
 
 struct TryStatement {
@@ -252,9 +279,9 @@ struct ThrowStatement {
 };
 
 struct DeclarationStatement {
-    TypeSpecifier   *type;
-    Identifier      *ident;
-    Expression      *initializer;
+    TypeSpecifier          *type;
+    Identifier             *ident;
+    Expression             *initializer;
 };
 
 struct Statement {
@@ -283,10 +310,6 @@ struct FunctionList {
     FunctionDefinition *phead;
 };
 
-struct DeclarationStatementList {
-    DeclarationStatement *phead;
-};
-
 /* 
     A source code file is compiled as <defifition_list, statement_list>. 
     Now, definition_list is just consist of function_definition.
@@ -307,7 +330,7 @@ struct Compiler {
     FunctionList                *function_list;
     int                         function_count;
     StatementList               *statement_list;
-    DeclarationStatementList    *declaration_stat_list;
+    StatementList               *declaration_stat_list;
     int                         current_line_number;
     Block                       *current_block;
     MEM_Storage                 compile_storage;
@@ -358,18 +381,19 @@ Statement* create_throw_statement(Expression *except);
 Statement* create_declaration_statement(TypeSpecifier *ts, Identifier *ident, Expression *initializer);
 Block* open_block();
 Block* close_block(Block *block, StatementList *stat_list);
-TypeSpecifier* create_typespecifer(ValueType typ);
+TypeSpecifier* create_typespecifier(ValueType typ);
 
 /* common.c */
 void set_current_compiler(Compiler *comp);
 Compiler* get_current_compiler();
 void* Malloc(size_t size);
+void* Realloc(void* ptr, size_t sz);
 void error_message(int linenum, CompileError err);
 
 /* compiler.c */
 Compiler* create_compiler();
 Executable* compile(Compiler *compiler, FILE *fp);
-Executable* walk_ast_for_semantic_analysis(Compiler *comp);
+void walk_ast_for_semantic_analysis(Compiler *comp);
 Executable* walk_ast_for_gen_code(Compiler *comp);
 
 /* string.c */
@@ -377,6 +401,15 @@ void open_string_literal();
 void add_string_literal(int letter);
 char* close_string_literal();
 void reset_string_literal();
+
+/* stack.c */
+struct Stack* new_stk(struct Stack *stk);
+void push_stk(struct Stack *stk, void *elem);
+void* pop_stk(struct Stack *stk);
+int stk_size(struct Stack *stk);
+
+/* debug.c */
+void disassemble(Compiler *comp);
 
 /* function_end */
 

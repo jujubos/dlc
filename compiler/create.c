@@ -199,7 +199,7 @@ Expression* create_logical_not_expression(Expression *operand) {
     Expression *expr;
 
     expr = (Expression*)Malloc(sizeof(Expression));
-    expr->kind = LOGICAL_OR_EXPRESSION;
+    expr->kind = LOGICAL_NOT_EXPRESSION;
     expr->unary_operand = operand;
     expr->type = UNDETERMIEND;
     expr->linenum = get_current_compiler()->current_line_number;
@@ -249,7 +249,7 @@ Expression* create_boolean_expression(Boolean v) {
 
     expr = (Expression*)Malloc(sizeof(Expression));
     expr->kind = BOOLEAN_LITERAL_EXPRESSION;
-    expr->type = BOOLEAN_TYPE;
+    expr->type = create_typespecifier(BOOLEAN_TYPE);
     expr->boolean_v = v;
     expr->linenum = get_current_compiler()->current_line_number;
 
@@ -429,7 +429,7 @@ Block* open_block() {
     block = (Block*)Malloc(sizeof(Block));
     block->outer_block = comp->current_block;
     block->type = UNDEFINED_BLOCK;
-    block->declaration_list = NULL;
+    block->declaration_stat_list = NULL;
     block->stat_list = NULL;
     comp->current_block = block;
     
@@ -447,7 +447,7 @@ Block* close_block(Block *block, StatementList *stat_list) {
     return block;
 }
 
-TypeSpecifier* create_typespecifer(ValueType typ) {
+TypeSpecifier* create_typespecifier(ValueType typ) {
     TypeSpecifier* ts;
 
     ts = (TypeSpecifier*)Malloc(sizeof(TypeSpecifier));

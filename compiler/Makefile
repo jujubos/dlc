@@ -10,6 +10,8 @@ OBJS= \
 	../memory/mem.o\
 	../debug/dbg.o\
 	main.o\
+	semantic.o\
+	debug.o\
 
 CFLAGS = -c -g -Wall -Wswitch-enum -std=c11 -pedantic
 INCLUDES = \
@@ -44,4 +46,6 @@ common.o: common.c ../include/MEM.h ../include/DBG.h decls.h
 compiler.o: compiler.c ../include/MEM.h ../include/DBG.h decls.h
 create.o: create.c ../include/MEM.h ../include/DBG.h decls.h
 string.o: string.c ../include/MEM.h decls.h
+semantic.o: semantic.c ../include/MEM.h decls.h
+debug.o: debug.c ../include/MEM.h decls.h
 main.o: main.c ../include/MEM.h

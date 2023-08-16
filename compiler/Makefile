@@ -12,8 +12,10 @@ OBJS= \
 	main.o\
 	semantic.o\
 	debug.o\
+	codegen.o\
+	opcode.o\
 
-CFLAGS = -c -g -Wall -Wswitch-enum -std=c11 -pedantic
+CFLAGS = -c -g -Wall -Wswitch-enum -std=c11 -pedantic -DDEBUG
 INCLUDES = \
   -I/usr/local/include\
   -I../include
@@ -47,5 +49,7 @@ compiler.o: compiler.c ../include/MEM.h ../include/DBG.h decls.h
 create.o: create.c ../include/MEM.h ../include/DBG.h decls.h
 string.o: string.c ../include/MEM.h decls.h
 semantic.o: semantic.c ../include/MEM.h decls.h
+codegen.o: codegen.c ../include/MEM.h decls.h
+opcode.o: opcode.c ../include/MEM.h decls.h
 debug.o: debug.c ../include/MEM.h decls.h
 main.o: main.c ../include/MEM.h

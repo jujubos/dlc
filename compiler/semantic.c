@@ -547,11 +547,11 @@ void add_return_statement(FunctionDefinition *fd) {
     Statement *stat, *pos;
 
     stat = NULL;
-    // stat = (Statement*)Malloc(sizeof(Statement));
-    stat = (Statement*)malloc(sizeof(Statement));
+    stat = (Statement*)Malloc(sizeof(Statement));
+    // stat = (Statement*)malloc(sizeof(Statement));
     stat->kind = RETURN_STATEMENT;
     stat->u.return_stat.ret_expr = NULL; /* Is NULL fine here??? */
-    
+    stat->next = NULL;
     if(fd->block->stat_list->phead == NULL) {
         fd->block->stat_list->phead = stat;
     } else {

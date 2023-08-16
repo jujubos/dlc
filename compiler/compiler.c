@@ -1,12 +1,12 @@
 #include <stdio.h>
 #include "decls.h"
+#include "../include/exe.h"
+
 
 extern int yyparse(void);
 extern FILE *yyin;
 
-Executable* walk_ast_for_gen_code(Compiler *comp) {
-    return NULL;
-}
+
 
 Executable* compile(Compiler *compiler, FILE *fp) {
     Executable *exe;
@@ -18,7 +18,7 @@ Executable* compile(Compiler *compiler, FILE *fp) {
         exit(1);
     }
     walk_ast_for_semantic_analysis(compiler);
-    exe = walk_ast_for_gen_code(compiler);
+    exe = walk_ast_for_gen_exe(compiler);
     
     return exe;
 }

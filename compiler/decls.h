@@ -3,6 +3,7 @@
 
 #include "../include/DBG.h"
 #include "../include/MEM.h"
+#include "../include/exe.h"
 
 #define LINE_BUF_SIZE (1024)
 #define smaller(a, b) ((a) < (b) ? (a) : (b))
@@ -125,7 +126,6 @@ typedef struct Elif Elif;
 typedef struct Argument Argument;
 typedef struct ArgumentList ArgumentList;
 typedef struct Compiler Compiler;
-typedef struct Executable Executable;
 typedef struct StatementList StatementList;
 typedef struct FunctionList FunctionList;
 typedef struct ForeachStatement ForeachStatement;
@@ -264,8 +264,8 @@ struct ContinueStatement {
 struct Identifier {
     char                  *name;
     int                   is_func;
-    Statement             *decl;
-    FunctionDefinition    *func_def;
+    Statement             *decl;     /* variable identifier will be binded to */
+    FunctionDefinition    *func_def; /* function identifer will be binded to */
 };
 
 struct TryStatement {
@@ -340,10 +340,6 @@ struct Compiler {
     MEM_Storage                 compile_storage;
 };
 
-struct Executable {
-    char dummy;
-};
-
 /* function_begin */
 
 /* create.c */
@@ -399,7 +395,7 @@ void error_message(int linenum, CompileError err);
 Compiler* create_compiler();
 Executable* compile(Compiler *compiler, FILE *fp);
 void walk_ast_for_semantic_analysis(Compiler *comp);
-Executable* walk_ast_for_gen_code(Compiler *comp);
+Executable* walk_ast_for_gen_exe();
 
 /* string.c */
 void open_string_literal();

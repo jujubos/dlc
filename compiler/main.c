@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
     }
 
     compiler = create_compiler();
-    compile(compiler, fp);
+    Executable *exe =  compile(compiler, fp);
     disassemble(compiler);
     
     // free_compiler(compile);

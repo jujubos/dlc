@@ -3,6 +3,7 @@
         "*.asm": "nasm",
         "limits": "c",
         "type_traits": "c",
-        "mem.h": "c"
+        "mem.h": "c",
+        "exe.h": "c"
     }
 }

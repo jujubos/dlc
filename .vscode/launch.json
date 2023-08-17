@@ -15,6 +15,21 @@
                 "miDebuggerPath": "gdb",
                 "program": "${workspaceFolder}/compiler/diskam"
             },
+        },
+        {
+            "name": "DebugForTestt",
+            "type": "cppdbg",
+            "request": "launch",
+            "args": [""],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "linux": {
+                "MIMode": "gdb",
+                "miDebuggerPath": "gdb",
+                "program": "${workspaceFolder}/compiler/testt"
+            },
         }
     ]
 }

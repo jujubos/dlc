@@ -1,7 +1,146 @@
-#include <table.h>
+#include <string.h>
 #include "decls.h"
 
 #define IDENTIFIER_MAX_LEN 256
+
+extern OpcodeInfo opcode_info[];
+
+typedef enum {
+    TABLE_TYPE_UNSET,
+    TABLE_INT,
+    TABLE_STRING,
+} TableColumnType;
+
+typedef struct table  table;
+typedef struct Cell   Cell;
+
+struct Cell {
+    TableColumnType type;
+    union {
+        int int_v;
+        char *str_v;
+    };
+};
+
+struct table {
+    Cell     *arr;
+    int      col_num;
+    int      row_num; /* 0 means no rows. 1 means there is one row. */
+};
+
+table* table_new() {
+    table *tab;
+
+    tab = MEM_malloc(sizeof(table));
+    tab->arr = NULL;
+    tab->col_num = 0;
+    tab->row_num = 0;
+
+    return tab;
+}
+
+void table_add_column(table* tab, const char* name, TableColumnType ctype) {
+    tab->col_num ++;
+}
+
+int table_add_row(table *tab) {
+    tab->row_num ++;
+    tab->arr = MEM_realloc(tab->arr, tab->row_num * tab->col_num * sizeof(Cell));
+    
+    int idx = (tab->row_num - 1) * tab->col_num;
+    for(int i = 0; i < tab->col_num; i ++) {
+        tab->arr[idx + i].type = TABLE_TYPE_UNSET;
+    }
+
+    return tab->row_num;
+}
+
+void table_set_int(table *tab, int row, int col, int value) {
+    int idx = (row-1) * tab->col_num + (col - 1);
+    tab->arr[idx].type = TABLE_INT;
+    tab->arr[idx].int_v = value;
+}
+
+void table_set_string(table *tab, int row, int col, char* value) {
+    int idx = (row-1) * tab->col_num + (col - 1);
+    tab->arr[idx].type = TABLE_STRING;
+    tab->arr[idx].str_v = value;
+}
+
+int table_get_row_num(table *tab) {
+    return tab->row_num;
+}
+
+int table_get_col_num(table *tab) {
+    return tab->col_num;
+}
+
+void reverse(char *str) {
+    if(str == NULL) return;
+    char *end = str;
+    while(*end) end ++;
+    end --;
+    while(str < end) {
+        char t = *str;
+        *str = *end;
+        *end = t;
+        str ++, end --;
+    }
+}
+
+void int_to_str(int x, char *buf, int buf_sz) {
+    char *str = buf;
+
+    if(x == 0) {
+        if(buf_sz > 1) {
+            *buf ++ = '0';
+            *buf = '\0';
+        } else {
+            printf("table_cell_to_buffer:buf_size < int 0\n");
+            exit(1);
+        }
+    }
+
+    int s = 0;
+    while(x) {
+        if(s + 1 >= buf_sz) {
+            printf("table_cell_to_buffer:buf_size < int length\n");
+            exit(1);
+        }
+        *buf++ = x % 10 + '0';
+        x /= 10;
+        s ++;
+    }
+    *buf = '\0';
+    reverse(str);
+}
+
+void table_cell_to_buffer(table *tab, int row, int col, char *buf, int buf_size) {
+    int idx = (row-1) * tab->col_num + (col - 1);
+    Cell* cell = tab->arr + idx;
+    switch (cell->type)
+    {
+    case TABLE_INT:
+        int_to_str(cell->int_v, buf, buf_size);
+        break;
+    case TABLE_STRING:
+        if(strlen(cell->str_v) >= buf_size) {
+            printf("table_cell_to_buffer:strlen(cell->str_v) >= buf_size\n");
+            exit(1);
+        }
+        strcpy(buf, cell->str_v);
+        break;
+    case TABLE_TYPE_UNSET:
+        if(buf_size < 1) {
+            printf("table_cell_to_buffer:buf_size < empty string length\n");
+            exit(1);
+        }
+        strcpy(buf, "");
+        break;
+    default:
+        break;
+    }
+}
 
 char *stat_kinds[] = {
     "EXPRESSION_STATEMENT",
@@ -58,6 +197,46 @@ char *value_types[] = {
     "DOUBLE_TYPE",
     "STRING_TYPE",
 };
+
+void print_seperate_line() {
+    printf("%-15s\t", "-------------");
+    printf("%-15s\t", "-------------");
+    printf("%-15s\t", "-------------");
+    printf("%-15s\t", "-------------");
+    printf("%-15s\t", "-------------");
+    printf("%-15s\t", "-------------");
+    printf("\n");
+}
+
+void print_line(char *cell1, char *cell2, char *cell3, char *cell4, char *cell5, char *cell6) {
+    printf("%-15s\t", cell1);
+    printf("%-15s\t", cell2);
+    printf("%-15s\t", cell3);
+    printf("%-15s\t", cell4);
+    printf("%-15s\t", cell5);
+    printf("%-15s\t", cell6);
+    printf("\n");
+    print_seperate_line();
+}
+
+void print_table(table *tab) {
+    /* print table header */
+    print_line("START_PC", "OPCODE_NAME", "OPERAND_SIZE", "OPERAND", "IDENTIFIER", "LABEL");
+
+    /* print the table */
+    int row_num = table_get_row_num(tab);
+    int col_num = table_get_col_num(tab);
+    for(int row = 1; row <= row_num; row ++) {
+        for(int col = 1; col <= col_num; col ++) {
+            char buf[200];
+            table_cell_to_buffer(tab, row, col, buf, sizeof(buf));
+            printf("%-15s\t", buf);
+        }
+        printf("\n");
+        print_seperate_line();
+    }
+}
+
 /*
     0       Func1       *           *
     1       type        exprtype    kind
@@ -65,6 +244,7 @@ char *value_types[] = {
     #       LocalVar    *           *
     name    index       *           *
 */
+static
 void disass_func(FunctionDefinition *fd) {
     Statement *stat;
     table *tab;
@@ -77,48 +257,111 @@ void disass_func(FunctionDefinition *fd) {
     table_add_column(tab, "", TABLE_STRING);
     table_add_column(tab, "", TABLE_STRING);
     row = table_add_row(tab);
-    table_set_int(tab, row, 0, id ++);
-    table_set_string(tab, row, 1, fd->ident->name);
-    table_set_string(tab, row, 2, "******");
+    table_set_int(tab, row, 1, id ++);
+    table_set_string(tab, row, 2, fd->ident->name);
     table_set_string(tab, row, 3, "******");
+    table_set_string(tab, row, 4, "******");
     for(stat = fd->block->stat_list->phead; stat; stat = stat->next) {
         row = table_add_row(tab);
-        table_set_int(tab, row, 0, id ++);
-        table_set_string(tab, row, 1, stat_kinds[stat->kind]);
+        table_set_int(tab, row, 1, id ++);
+        table_set_string(tab, row, 2, stat_kinds[stat->kind]);
         if(stat->kind == EXPRESSION_STATEMENT) {
-            table_set_string(tab, row, 2, value_types[stat->u.expr->type->basic_type]);
-            table_set_string(tab, row, 3, exprkinds[stat->u.expr->kind]);
+            table_set_string(tab, row, 3, value_types[stat->u.expr->type->basic_type]);
+            table_set_string(tab, row, 4, exprkinds[stat->u.expr->kind]);
         }
     }
     row = table_add_row(tab);
-    table_set_int(tab, row, 0, id ++);
-    table_set_string(tab, row, 1, "LocalVars");
-    table_set_string(tab, row, 2, "######");
+    table_set_int(tab, row, 1, id ++);
+    table_set_string(tab, row, 2, "LocalVars");
     table_set_string(tab, row, 3, "######");
+    table_set_string(tab, row, 4, "######");
     for(int i = 0; i < fd->local_variable_cnt; i ++) {
         Statement *d = fd->local_variables[i];
         int row;
         row = table_add_row(tab);
-        table_set_int(tab, row, 0, d->u.declaration_stat.index);
-        table_set_string(tab, row, 1, d->u.declaration_stat.ident->name);
+        table_set_int(tab, row, 1, d->u.declaration_stat.index);
+        table_set_string(tab, row, 2, d->u.declaration_stat.ident->name);
     }
-    /* print the table */
-    int row_num = table_get_row_length(tab);
-    int col_num = table_get_column_length(tab);
-    for(int row = 0; row < row_num; row ++) {
-        for(int col = 0; col < col_num; col ++) {
-            char buf[200];
-            table_cell_to_buffer(tab, row, col, buf, sizeof(buf));
-            printf("%-25s\t", buf);
-        }
-        printf("\n");
-    }
-    table_delete(tab);
+
+    print_table(tab);
+
 }
 
+static
+void disass_func_codes(Function *func, Executable *exe) {
+    table *tab = NULL;
+    int row;
+    int pc = 0, imm8, imm16, idx;
+    Byte opcode;
 
+    tab = table_new();
 
-void disassemble() {
+    table_add_column(tab, "", TABLE_INT);    
+    table_add_column(tab, "", TABLE_STRING); /* OpCode Name */
+    table_add_column(tab, "", TABLE_INT);    /* Operand size */
+    table_add_column(tab, "", TABLE_INT);    /* Index or Operand */
+    table_add_column(tab, "", TABLE_STRING); /* Identifier */
+    table_add_column(tab, "", TABLE_INT); /* label */
+
+    while(pc < func->code_size) {
+        row = table_add_row(tab);
+        table_set_int(tab, row, 1, pc);
+        opcode = func->codes[pc ++];
+        table_set_string(tab, row, 2, opcode_info[opcode].mnemonic);
+        switch (opcode_info[opcode].para[0])
+        {
+        case 'b': 
+            imm8 = func->codes[pc ++];
+            table_set_int(tab, row, 3, 1);
+            table_set_int(tab, row, 4, (int)imm8);
+            break;
+        case 'd':
+            imm16 = ((int)func->codes[pc] << 8) + func->codes[pc + 1];
+            table_set_int(tab, row, 3, 2);
+            table_set_int(tab, row, 4, imm16);
+            pc += 2;
+        case 's':
+            idx = ((int)func->codes[pc] << 8) + func->codes[pc + 1];
+            table_set_int(tab, row, 3, 2);
+            table_set_int(tab, row, 4, idx);
+            pc += 2;          
+            if(opcode >= 8 && opcode <= 13) {           /* pop_stack_int */
+                Variable v = func->local_vars[idx];
+                table_set_string(tab, row, 5, v.name);
+            } else if(opcode >= 14 && opcode <= 19) {   /* push_static_int */
+                Variable v = exe->data_seg->arr[idx];
+                table_set_string(tab, row, 5, v.name);
+            } else if(opcode >= 63 && opcode <= 65) {   /* jump label */
+                table_set_int(tab, row, 6, idx);
+            }
+            break;
+        case 'p':
+            idx = ((int)func->codes[pc] << 8) + func->codes[pc + 1];
+            table_set_int(tab, row, 3, 2);
+            table_set_int(tab, row, 4, idx);
+            pc += 2;
+            break;
+        case '\0':
+        default:
+            break;
+        }
+    }
+        
+    print_table(tab);
+
+}
+
+void disassemble_exe(Executable *exe) {
+    Function f;
+
+    for(int i = 0; i < exe->code_seg->size; i ++) {
+        f = exe->code_seg->arr[i];
+        print_line("<FUNCTION>", f.name, "", "", "", "");
+        disass_func_codes(&f, exe);
+    }
+}
+
+void disassemble_ast() {
     Compiler *comp;
     FunctionDefinition *fd;
 

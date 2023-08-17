@@ -1,5 +1,71 @@
-int func() {
+int func_normal_assign() {
+    int a;
+    double d;
+    double dd;
+    string str;
+
+    a = 11;
+    d = 1.0;
+    dd = 1.23;
+    str = "abc";
+
+    return 0;
+}
+
+int func_non_normal_assign() {
+    int a;
+    a += 1;
+
+    int b;
+    b -= 1;
+
+    double c;
+    c *= 123.123;
+
+    double d;
+    d /= 1.11;
+
+    int e = 10;
+    e %= 3;
+
+    return 0;
+}
+
+int func_arith_expr() {
+    int a = 1;
+    int b = 2;
+
+    a + b;
+    a - b;
+    a * b;
+    a / b;
+    a % b;
+    -a;
+    
+    return 0;
+}
+
+int func_relation_expr() {
+    int a = 1;
+    int b = 2;
+
+    a == b;
+    a != b;
+    a > b;
+    a < b;
+    a <= b;
+    a >= b;
+
+    return 0;
+}
+
+int func_logical_expr() {
     int a;
     int b;
-    a = b;
+
+    a > b && b > a;
+    a == b || b != a;
+    !(a > b);
+
+    return 0;
 }

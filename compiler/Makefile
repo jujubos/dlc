@@ -1,6 +1,7 @@
 TARGET=diskam
 CC=gcc
 OBJS= \
+	opcode.o\
 	string.o\
 	lex.yy.o\
 	y.tab.o\
@@ -13,9 +14,8 @@ OBJS= \
 	semantic.o\
 	debug.o\
 	codegen.o\
-	opcode.o\
 
-CFLAGS = -c -g -Wall -Wswitch-enum -std=c11 -pedantic -DDEBUG
+CFLAGS = -c -g -Wall -Wswitch-enum -std=c11 -pedantic
 INCLUDES = \
   -I/usr/local/include\
   -I../include
@@ -23,7 +23,7 @@ INCLUDES = \
 $(TARGET):$(OBJS)
 	cd ../memory; $(MAKE);
 	cd ../debug; $(MAKE);
-	$(CC) $(OBJS) -o $@ -lm -ltable
+	$(CC) $(OBJS) -o $@ -lm
 
 clean:
 	rm -f *.o lex.yy.c y.tab.c y.tab.h *~

@@ -11,8 +11,8 @@
 
 /* enum_begin */
 typedef enum {
-    TRUE,
-    FALSE
+    FALSE,
+    TRUE
 } Boolean;
 
 typedef enum {
@@ -211,7 +211,7 @@ struct FunctionDefinition {
     Block                 *block;
     Statement             **local_variables;
     int                   local_variable_cnt;
-    int                   index;
+    int                   index; /* set in create_functino_definition() */
     FunctionDefinition    *next;
 };
 
@@ -410,7 +410,8 @@ void* pop_stk(struct Stack *stk);
 int stk_size(struct Stack *stk);
 
 /* debug.c */
-void disassemble();
+void disassemble_ast();
+void disassemble_exe(Executable *exe);
 
 /* function_end */
 

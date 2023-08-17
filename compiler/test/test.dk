@@ -88,3 +88,5 @@ int func_with_args(int a, int b) {
     return c;
 }
 
+int t;
+t = 123;

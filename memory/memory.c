@@ -234,7 +234,7 @@ MEM_realloc_func(MEM_Controller controller, char *filename, int line,
     }
 #endif
 
-    return(new_ptr);
+    return (new_ptr);
 }
 
 char *

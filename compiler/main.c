@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "decls.h"
+#include <table.h>
 
 int main(int argc, char **argv) {
     Compiler * compiler;
@@ -18,8 +19,9 @@ int main(int argc, char **argv) {
 
     compiler = create_compiler();
     Executable *exe =  compile(compiler, fp);
-    disassemble(compiler);
-    
+    // disassemble_ast(compiler);
+    disassemble_exe(exe);
+
     // free_compiler(compile);
     return 0;
 }

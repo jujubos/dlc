@@ -156,6 +156,10 @@ void add_cast_node(Expression *expr) {
     }
 }
 
+int is_type_equal(TypeSpecifier *left, TypeSpecifier *right) {
+    return left->basic_type == right->basic_type;
+}
+
 void type_check_and_cast(Expression *expr) {
     switch (expr->kind)
     {
@@ -165,7 +169,7 @@ void type_check_and_cast(Expression *expr) {
     case MUL_ASSIGN_EXPRESSION:             /* Fallthrough */
     case DIV_ASSIGN_EXPRESSION:             /* Fallthrough */
     case MOD_ASSIGN_EXPRESSION:     
-        if(expr->binary_expr.left->type != expr->binary_expr.right->type) {
+        if(!is_type_equal(expr->binary_expr.left->type, expr->binary_expr.right->type)) {
             if(is_expr_type(expr->binary_expr.left, STRING_TYPE) || 
                 is_expr_type(expr->binary_expr.right, STRING_TYPE)) {
                 printf("type_check_and_cast:ASSIGN EXPRESSION,STRING_TYPE\n");
@@ -177,7 +181,7 @@ void type_check_and_cast(Expression *expr) {
         }
         break;
     case ARITH_ADDITIVE_EXPRESSION:
-        if(expr->binary_expr.left->type != expr->binary_expr.right->type) {
+        if(!is_type_equal(expr->binary_expr.left->type, expr->binary_expr.right->type)) {
             add_cast_node(expr);
         } else {
             expr->type = create_typespecifier(expr->binary_expr.left->type->basic_type);
@@ -192,7 +196,7 @@ void type_check_and_cast(Expression *expr) {
             printf("type_check_and_cast:ARITH EXPRESSION EXCEPT FOR ADD,STRING_TYPE\n");
             exit(1);
         }
-        if(expr->binary_expr.left->type != expr->binary_expr.right->type) {
+        if(!is_type_equal(expr->binary_expr.left->type, expr->binary_expr.right->type)) {
             add_cast_node(expr);
         } else {
             expr->type = create_typespecifier(expr->binary_expr.left->type->basic_type);
@@ -204,7 +208,7 @@ void type_check_and_cast(Expression *expr) {
     case RELATION_LT_EXPRESSION:    /* Fallthrough */
     case RELATION_GE_EXPRESSION:    /* Fallthrough */
     case RELATION_LE_EXPRESSION:
-        if(expr->binary_expr.left->type != expr->binary_expr.right->type) {
+        if(!is_type_equal(expr->binary_expr.left->type, expr->binary_expr.right->type)) {
             if(is_expr_type(expr->binary_expr.left, STRING_TYPE) || 
                 is_expr_type(expr->binary_expr.right, STRING_TYPE)) {
                 printf("type_check_and_cast:RELATION EXPRESSION,STRING_TYPE\n");
@@ -216,9 +220,9 @@ void type_check_and_cast(Expression *expr) {
         break;
     case LOGICAL_AND_EXPRESSION:
     case LOGICAL_OR_EXPRESSION:
-        if(is_expr_type(expr->binary_expr.left, STRING_TYPE) || 
-            is_expr_type(expr->binary_expr.right, STRING_TYPE)) {
-            printf("type_check_and_cast:LOGICAL AND and OR EXPRESSION,STRING_TYPE\n");
+        if(!is_expr_type(expr->binary_expr.left, BOOLEAN_TYPE) || 
+            !is_expr_type(expr->binary_expr.right, BOOLEAN_TYPE)) {
+            printf("type_check_and_cast:LOGICAL AND and OR EXPRESSION,BOOLEAN TYPE\n");
             exit(1);
         }
         expr->type = create_typespecifier(BOOLEAN_TYPE);
@@ -515,6 +519,12 @@ void walk_statement_list(StatementList *stat_list) {
     }
 }
 
+/*
+    This step could be finished during syntax analysis process.
+    But the author put the step in semantic analysis process.
+    TASK:
+        Refactor the step into syntax analysis!
+*/
 void assemble_local_variable(FunctionDefinition *fd) {
     int sz;
     Parameter *param_p;
@@ -522,6 +532,7 @@ void assemble_local_variable(FunctionDefinition *fd) {
 
     sz = fd->param_list->len + fd->block->declaration_stat_list->len;
 
+    /* alloc DeclarationStatement for Parameter */
     fd->local_variables = (Statement**)Malloc(sizeof(Statement*) * sz);
     for(param_p=fd->param_list->phead; param_p; param_p=param_p->next) {
         Statement *d = (Statement*)Malloc(sizeof(Statement));

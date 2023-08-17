@@ -1,10 +1,15 @@
 #include "../include/exe.h"
 
-
+/*
+    'b' means imm8
+    'd' means imm16
+    'p' means pointer to constant, that is, two byte index.
+    's' means two byte index to indentifier.
+*/
 OpcodeInfo opcode_info[] = {
     {"dummy", "", 0},
     {"push_int_1byte", "b", 1},
-    {"push_int_2byte", "s", 1},
+    {"push_int_2byte", "d", 1},
     {"push_int", "p", 1},
     {"push_double_0", "", 1},
     {"push_double_1", "", 1},

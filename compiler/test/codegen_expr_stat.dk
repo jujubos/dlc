@@ -69,3 +69,31 @@ int func_logical_expr() {
 
     return 0;
 }
+
+int func_type_cast() {
+    boolean bool;
+    int integer;
+    string str;
+    double db;
+    
+    db = integer;
+    integer = db;
+
+    return 0;
+}
+
+int func_comma_expr() {
+    int a;
+    int b;
+    a + b, a --;
+
+    return 0;
+}
+
+int func_post_expr() {
+    int a;
+    a ++;
+    a --;
+
+    return 0;
+}

@@ -1,17 +1,11 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 
-void reverse(char *str) {
-    if(str == NULL) return;
-    char *end = str;
-    while(*end) end ++;
-    end --;
-    while(str > end) {
-        char t = *str;
-        *str = *end;
-        *end = t;
-        str ++, end --;
-    }
+void emit(int t, ...) {
+    va_list args;
+    va_start(args, t);
+
 }
 
 int main() {

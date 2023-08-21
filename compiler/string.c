@@ -27,7 +27,7 @@ char* close_string_literal() {
     
     new_str = Malloc(strbufsz + 1);
     memcpy(new_str, strbuf, strbufsz);
-    new_str[strbufsz + 1] = '\0';
+    new_str[strbufsz] = '\0';
 
     return new_str;
 }

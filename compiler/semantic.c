@@ -35,44 +35,38 @@ FunctionDefinition* search_function(char *name) {
 
 Statement* search_declaration(char *name) {
     Compiler *comp;
-    Statement *stat;
+    Statement *stat, *ident_finded;
     Block *pos_blk;
 
     comp = get_current_compiler();
+    int finded = 0;
+
+    if(comp->current_block != NULL) {
+        pos_blk = comp->current_block;
+        while(pos_blk) {
+            for(stat=pos_blk->declaration_stat_list->phead; stat; stat=stat->next) {
+                if(strcmp(stat->u.declaration_stat.ident->name, name) == 0) {
+                    if(!finded) {
+                        finded = 1;
+                        ident_finded = stat;
+                    } else {
+                        printf("search_declaration,identifier redefined, parameter and block variable conflict:%s\n", name);
+                        exit(1);
+                    }
+                }
+            }
+            pos_blk = pos_blk->outer_block;
+        }
+    }
+
+    if(finded) return ident_finded;
+
     for(stat = comp->declaration_stat_list->phead; stat; stat = stat->next) {
         if(strcmp(stat->u.declaration_stat.ident->name, name) == 0)
             return stat;
     }
-    int finded = 0;
 
-    if(comp->current_block != NULL) {
-        for(pos_blk = comp->current_block->outer_block; pos_blk; pos_blk = pos_blk->outer_block) {
-            for(stat = pos_blk->declaration_stat_list->phead; stat; stat = stat->next) {
-                if(strcmp(stat->u.declaration_stat.ident->name, name) == 0) {
-                    finded = 1;
-                    break;
-                }
-            }
-            if(finded) break;
-        }
-        for(int i = 0; i < cur_func->local_variable_cnt; i ++) {
-            stat = cur_func->local_variables[i];
-            if(strcmp(name, stat->u.declaration_stat.ident->name) == 0) {
-                if(!finded) {
-                    finded = 1;
-                    break;
-                } else {
-                    printf("search_declaration,identifier redefined, parameter and block variable conflict:%s\n", name);
-                    exit(1); 
-                }
-            }
-        }
-    }
-
-    if(finded) return stat;
-
-    printf("search_declaration,identifier not found:%s\n", name);
-    exit(1); 
+    return NULL;
 }
 
 int fill_identifier(Identifier *ident) {
@@ -83,7 +77,7 @@ int fill_identifier(Identifier *ident) {
         ident->decl = decl;
         ident->is_func = 0;
         return 1;
-    } else if((fd = search_function(ident->name))) {
+    } else if((fd = search_function(ident->name)) != NULL) {
         ident->func_def = fd;
         ident->is_func = 1;
         return 1;
@@ -109,8 +103,8 @@ void add_cast_node(Expression *expr) {
     case MUL_ASSIGN_EXPRESSION:             /* Fallthrough */
     case DIV_ASSIGN_EXPRESSION:             /* Fallthrough */
     case MOD_ASSIGN_EXPRESSION: 
-        cast_expr->cast_expr.type = cast_A_to_B[ltype->basic_type][rtype->basic_type];
-        cast_expr->cast_expr.casted_expr = expr;
+        cast_expr->cast_expr.type = cast_A_to_B[rtype->basic_type][ltype->basic_type];
+        cast_expr->cast_expr.casted_expr = expr->binary_expr.right;
         expr->binary_expr.right = cast_expr;
         expr->type = create_typespecifier(ltype->basic_type);
         break;
@@ -154,6 +148,7 @@ void add_cast_node(Expression *expr) {
     default:
         break;
     }
+    cast_expr->type = expr->type;
 }
 
 int is_type_equal(TypeSpecifier *left, TypeSpecifier *right) {
@@ -257,12 +252,11 @@ void type_check_and_cast(Expression *expr) {
             printf("type_check_and_cast:FUNC_CALL_EXPRESSION,callee not identifier\n");
             exit(1);
         }
-        FunctionDefinition *fd;
-        if((fd = search_function(expr->function_call_expr.callee->ident->name)) == NULL) {
+        if(!fill_identifier(expr->function_call_expr.callee->ident)) {
             printf("type_check_and_cast:FUNC_CALL_EXPRESSION,function not found\n");
             exit(1);
         }
-        expr->type = fd->type;
+        expr->type = expr->function_call_expr.callee->ident->func_def->type;
         break;
     case IDENTIFIER_EXPRESSION:
         if(!fill_identifier(expr->ident)) {
@@ -370,6 +364,7 @@ void walk_block(Block *block) {
     comp = get_current_compiler();
 
     comp->current_block = block;
+    walk_statement_list(block->declaration_stat_list);
     walk_statement_list(block->stat_list);
     comp->current_block = comp->current_block->outer_block;
 }
@@ -477,6 +472,12 @@ void walk_continue_statement(Statement *stat) {
     exit(1);
 }
 
+void walk_declaration_statement(Statement *stat) {
+    if(stat->u.declaration_stat.initializer != NULL) {
+        walk_expression(stat->u.declaration_stat.initializer);
+    }
+}
+
 void walk_statement_list(StatementList *stat_list) {
     Statement *stat;
 
@@ -512,6 +513,7 @@ void walk_statement_list(StatementList *stat_list) {
             walk_continue_statement(stat);
             break;
         case DECLARATION_STATEMENT:
+            walk_declaration_statement(stat);
             break;    
         default:
             break;
@@ -577,6 +579,7 @@ void add_return_statement(FunctionDefinition *fd) {
 
 void walk_ast_for_semantic_analysis(Compiler *comp) {
     /* walk top-level statement list */
+    walk_statement_list(comp->declaration_stat_list);
     walk_statement_list(comp->statement_list);
 
     /* walk statement list of each function block */

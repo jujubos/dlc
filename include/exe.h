@@ -72,7 +72,7 @@ typedef enum {
     LOGICAL_AND_OP,
     LOGICAL_OR_OP,
     LOGICAL_NOT_OP,
-    POP,
+    POP_OP,
     DUPLICATE,
     JUMP,
     JUMP_IF_TRUE,
@@ -80,7 +80,7 @@ typedef enum {
     /**/
     PUSH_FUNCTION,
     INVOKE,
-    RETURN
+    RETURN,
 } OpCodeTag;
 /* enum_end */
 

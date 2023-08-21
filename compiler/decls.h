@@ -86,7 +86,7 @@ typedef enum {
     UNKNOWN,
     BOOLEAN_TO_INT,
     BOOLEAN_TO_DOUBLE,
-    BOOLEAN_TO_STRINg,
+    BOOLEAN_TO_STRING,
     INT_TO_BOOLEAN,
     INT_TO_DOUBLE,
     INT_TO_STRING,
@@ -129,6 +129,7 @@ typedef struct Compiler Compiler;
 typedef struct StatementList StatementList;
 typedef struct FunctionList FunctionList;
 typedef struct ForeachStatement ForeachStatement;
+typedef struct BackPackPoint BackPackPoint;
 /* stack.c */
 typedef struct Stack Stack;
 
@@ -198,10 +199,14 @@ struct ParameterList {
 };
 
 struct Block {
-    BlockType               type;
-    StatementList           *stat_list;
-    Block                   *outer_block;
-    StatementList           *declaration_stat_list;
+    BlockType        type;
+    StatementList    *stat_list;
+    Block            *outer_block;
+    StatementList    *declaration_stat_list;
+    union {
+        Statement* stat;
+        FunctionDefinition *func_def;
+    };
 };
 
 struct FunctionDefinition {
@@ -211,7 +216,7 @@ struct FunctionDefinition {
     Block                 *block;
     Statement             **local_variables;
     int                   local_variable_cnt;
-    int                   index; /* set in create_functino_definition() */
+    int                   index; /* set in create_function_definition() */
     FunctionDefinition    *next;
 };
 
@@ -221,32 +226,47 @@ struct Elif {
     Elif        *next;
 };
 
+/*  
+    Unlike other list, elif_list may be NULL. 
+    Other list must be not NULL(list.phead could be NULL). 
+*/
 struct IfStatement {
     Expression  *cond;
     Block       *then_block;
-    Elif        *elif_list;
+    Elif        *elif_list; 
     Block       *else_block;
 };
 
-struct ForStatement {
-    Identifier *label;
-    Expression *init_expr;
-    Expression *cond_expr;
-    Expression *post_expr;
-    Block      *block;
+struct BackPackPoint {
+    int             address;
+    BackPackPoint   *next;
 };
 
-struct ForeachStatement {
-    Identifier  *label;
-    Identifier  *ident;
-    Expression  *expr;
-    Block       *block;
+struct ForStatement {
+    Identifier      *label;
+    Expression      *init_expr;
+    Expression      *cond_expr;
+    Expression      *post_expr;
+    Block           *block;
+    int             continue_pc;
+    BackPackPoint    *backpack_points;
 };
 
 struct WhileStatement {
-    Identifier *label;
-    Expression *cond_expr;
-    Block      *block;
+    Identifier      *label;
+    Expression      *cond_expr;
+    Block           *block;
+    int             continue_pc;
+    BackPackPoint   *backpack_points;
+};
+
+struct ForeachStatement {
+    Identifier       *label;
+    Identifier       *ident;
+    Expression       *expr;
+    Block            *block;
+    int              continue_pc;
+    BackPackPoint    *backpack_points;
 };
 
 struct ReturnStatement {

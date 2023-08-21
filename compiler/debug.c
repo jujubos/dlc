@@ -8,6 +8,7 @@ extern OpcodeInfo opcode_info[];
 typedef enum {
     TABLE_TYPE_UNSET,
     TABLE_INT,
+    TABLE_DOUBLE,
     TABLE_STRING,
 } TableColumnType;
 
@@ -19,6 +20,7 @@ struct Cell {
     union {
         int int_v;
         char *str_v;
+        double double_v;
     };
 };
 
@@ -59,6 +61,12 @@ void table_set_int(table *tab, int row, int col, int value) {
     int idx = (row-1) * tab->col_num + (col - 1);
     tab->arr[idx].type = TABLE_INT;
     tab->arr[idx].int_v = value;
+}
+
+void table_set_double(table *tab, int row, int col, double value) {
+    int idx = (row-1) * tab->col_num + (col - 1);
+    tab->arr[idx].type = TABLE_DOUBLE;
+    tab->arr[idx].double_v = value;
 }
 
 void table_set_string(table *tab, int row, int col, char* value) {
@@ -122,6 +130,9 @@ void table_cell_to_buffer(table *tab, int row, int col, char *buf, int buf_size)
     {
     case TABLE_INT:
         int_to_str(cell->int_v, buf, buf_size);
+        break;
+    case TABLE_DOUBLE:
+        sprintf(buf, "%lf", cell->double_v);
         break;
     case TABLE_STRING:
         if(strlen(cell->str_v) >= buf_size) {
@@ -198,31 +209,25 @@ char *value_types[] = {
     "STRING_TYPE",
 };
 
-void print_seperate_line() {
-    printf("%-15s\t", "-------------");
-    printf("%-15s\t", "-------------");
-    printf("%-15s\t", "-------------");
-    printf("%-15s\t", "-------------");
-    printf("%-15s\t", "-------------");
-    printf("%-15s\t", "-------------");
+void print_seperate_line(char *line, int n) {
+    for(int i = 0; i < n; i ++) {
+        printf("%-20s\t", line);
+    }
     printf("\n");
 }
 
 void print_line(char *cell1, char *cell2, char *cell3, char *cell4, char *cell5, char *cell6) {
-    printf("%-15s\t", cell1);
-    printf("%-15s\t", cell2);
-    printf("%-15s\t", cell3);
-    printf("%-15s\t", cell4);
-    printf("%-15s\t", cell5);
-    printf("%-15s\t", cell6);
+    printf("%-20s\t", cell1);
+    printf("%-20s\t", cell2);
+    printf("%-20s\t", cell3);
+    printf("%-20s\t", cell4);
+    printf("%-20s\t", cell5);
+    printf("%-20s\t", cell6);
     printf("\n");
-    print_seperate_line();
+    print_seperate_line("-------------", 6);
 }
 
 void print_table(table *tab) {
-    /* print table header */
-    print_line("START_PC", "OPCODE_NAME", "OPERAND_SIZE", "OPERAND", "IDENTIFIER", "LABEL");
-
     /* print the table */
     int row_num = table_get_row_num(tab);
     int col_num = table_get_col_num(tab);
@@ -230,10 +235,10 @@ void print_table(table *tab) {
         for(int col = 1; col <= col_num; col ++) {
             char buf[200];
             table_cell_to_buffer(tab, row, col, buf, sizeof(buf));
-            printf("%-15s\t", buf);
+            printf("%-20s\t", buf);
         }
         printf("\n");
-        print_seperate_line();
+        print_seperate_line("-------------", 6);
     }
 }
 
@@ -250,7 +255,7 @@ void disass_func(FunctionDefinition *fd) {
     table *tab;
     int id = 0;
     int row;
-    
+
     tab = table_new();
     table_add_column(tab, "", TABLE_INT);
     table_add_column(tab, "", TABLE_STRING);
@@ -282,7 +287,7 @@ void disass_func(FunctionDefinition *fd) {
         table_set_int(tab, row, 1, d->u.declaration_stat.index);
         table_set_string(tab, row, 2, d->u.declaration_stat.ident->name);
     }
-
+    
     print_table(tab);
 
 }
@@ -301,7 +306,7 @@ void disass_func_codes(Function *func, Executable *exe) {
     table_add_column(tab, "", TABLE_INT);    /* Operand size */
     table_add_column(tab, "", TABLE_INT);    /* Index or Operand */
     table_add_column(tab, "", TABLE_STRING); /* Identifier */
-    table_add_column(tab, "", TABLE_INT); /* label */
+    table_add_column(tab, "", TABLE_INT);    /* label */
 
     while(pc < func->code_size) {
         row = table_add_row(tab);
@@ -325,7 +330,7 @@ void disass_func_codes(Function *func, Executable *exe) {
             table_set_int(tab, row, 3, 2);
             table_set_int(tab, row, 4, idx);
             pc += 2;          
-            if(opcode >= 8 && opcode <= 13) {           /* pop_stack_int */
+            if(opcode >= 8 && opcode <= 13) {           /* push_stack_int */
                 Variable v = func->local_vars[idx];
                 table_set_string(tab, row, 5, v.name);
             } else if(opcode >= 14 && opcode <= 19) {   /* push_static_int */
@@ -346,9 +351,135 @@ void disass_func_codes(Function *func, Executable *exe) {
             break;
         }
     }
-        
+    /* print table header */
+    print_line("START_PC", "OPCODE_NAME", "OPERAND_SIZE", "OPERAND", "IDENTIFIER", "LABEL");
     print_table(tab);
 
+}
+
+void disass_codes(Executable *exe, Byte* codes, int code_size, Function *func) {
+    table *tab = NULL;
+    int row;
+    int pc = 0, imm8, imm16, idx;
+    Byte opcode;
+
+    tab = table_new();
+
+    table_add_column(tab, "", TABLE_INT);    
+    table_add_column(tab, "", TABLE_STRING); /* OpCode Name */
+    table_add_column(tab, "", TABLE_INT);    /* Operand size */
+    table_add_column(tab, "", TABLE_INT);    /* Index or Operand */
+    table_add_column(tab, "", TABLE_STRING); /* Identifier */
+    table_add_column(tab, "", TABLE_INT); /* label */
+
+    while(pc < code_size) {
+        row = table_add_row(tab);
+        table_set_int(tab, row, 1, pc);
+        opcode = codes[pc ++];
+        table_set_string(tab, row, 2, opcode_info[opcode].mnemonic);
+        switch (opcode_info[opcode].para[0])
+        {
+        case 'b': 
+            imm8 = codes[pc ++];
+            table_set_int(tab, row, 3, 1);
+            table_set_int(tab, row, 4, (int)imm8);
+            break;
+        case 'd':
+            imm16 = ((int)codes[pc] << 8) + codes[pc + 1];
+            table_set_int(tab, row, 3, 2);
+            table_set_int(tab, row, 4, imm16);
+            pc += 2;
+        case 's':
+            idx = ((int)codes[pc] << 8) + codes[pc + 1];
+            table_set_int(tab, row, 3, 2);
+            table_set_int(tab, row, 4, idx);
+            pc += 2;          
+            if(opcode >= 8 && opcode <= 13) {           /* push_stack_int */
+                Variable v = func->local_vars[idx];
+                table_set_string(tab, row, 5, v.name);
+            } else if(opcode >= 14 && opcode <= 19) {   /* push_static_int */
+                Variable v = exe->data_seg->arr[idx];
+                table_set_string(tab, row, 5, v.name);
+            } else if(opcode >= 63 && opcode <= 65) {   /* jump label */
+                table_set_int(tab, row, 6, idx);
+            }
+            break;
+        case 'p':
+            idx = ((int)codes[pc] << 8) + codes[pc + 1];
+            table_set_int(tab, row, 3, 2);
+            table_set_int(tab, row, 4, idx);
+            pc += 2;
+            break;
+        case '\0':
+        default:
+            break;
+        }
+    }
+
+    /* print table header */
+    print_line("START_PC", "OPCODE_NAME", "OPERAND_SIZE", "OPERAND", "IDENTIFIER", "LABEL");
+    print_table(tab);
+}
+
+void disass_data_seg(Executable *exe) {
+    table *tab;
+    Variable *var;
+    int row;
+
+    tab = table_new();
+
+    table_add_column(tab, "", TABLE_INT);    
+    table_add_column(tab, "", TABLE_STRING);    
+    table_add_column(tab, "", TABLE_STRING);
+    for(int i = 0; i < exe->data_seg->size; i ++) {
+        var = &exe->data_seg->arr[i];
+        row = table_add_row(tab);
+        table_set_int(tab, row, 1, i);
+        table_set_string(tab, row, 2, value_types[var->type->basic_type]);
+        table_set_string(tab, row, 3, var->name);
+    }
+
+    /* print table */
+    print_seperate_line("*************", 6);
+    print_line("Index", "Type", "Name", "","","");
+    print_table(tab);
+}
+
+char *cons_tags[3] = {
+    "INT CONSTANT",
+    "DOUBLE CONSTANT",
+    "STRING CONSTANT",
+};
+
+void disass_const_seg(Executable *exe) {
+    table *tab;
+    Constant *cons;
+    int row;
+
+    tab = table_new();
+    table_add_column(tab, "", TABLE_INT);      /* Index */
+    table_add_column(tab, "", TABLE_STRING);   /* Tag*/ 
+    table_add_column(tab, "", TABLE_INT);      /* int_v */
+    table_add_column(tab, "", TABLE_DOUBLE);   /* double_v */
+    table_add_column(tab, "", TABLE_STRING);   /* string_v */
+    for(int i = 0; i < exe->constant_seg->size; i ++) {
+        cons = &exe->constant_seg->arr[i];
+        row = table_add_row(tab);
+        table_set_int(tab, row, 1, i);
+        table_set_string(tab, row, 2, cons_tags[cons->tag]);
+        if(cons->tag == INT_CONSTANT) {
+            table_set_int(tab, row, 3, cons->int_constant);
+        } else if(cons->tag == DOUBLE_CONSTANT) {
+            table_set_double(tab, row, 4, cons->double_constant);
+        } else if(cons->tag == STRING_CONSTANT) {
+            table_set_string(tab, row, 5, cons->string_constant);
+        }
+    }
+
+    /* print table */
+    print_seperate_line("#############", 6);
+    print_line("Index", "Constant Type", "Int", "Double", "String", "");
+    print_table(tab);
 }
 
 void disassemble_exe(Executable *exe) {
@@ -359,6 +490,12 @@ void disassemble_exe(Executable *exe) {
         print_line("<FUNCTION>", f.name, "", "", "", "");
         disass_func_codes(&f, exe);
     }
+
+    disass_codes(exe, exe->top_codes, exe->top_code_size, NULL);
+
+    disass_data_seg(exe);
+    disass_const_seg(exe);
+
 }
 
 void disassemble_ast() {
@@ -369,5 +506,6 @@ void disassemble_ast() {
     for(fd=comp->function_list->phead; fd; fd=fd->next) {
         disass_func(fd);
     }
+
     return;
 }

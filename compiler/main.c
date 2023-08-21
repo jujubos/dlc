@@ -19,8 +19,9 @@ int main(int argc, char **argv) {
 
     compiler = create_compiler();
     Executable *exe =  compile(compiler, fp);
+    
     // disassemble_ast(compiler);
-    disassemble_exe(exe);
+    // disassemble_exe(exe);
 
     // free_compiler(compile);
     return 0;

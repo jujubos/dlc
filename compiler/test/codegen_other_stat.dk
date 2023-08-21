@@ -1,0 +1,111 @@
+int func_for_stat() {
+    int i;
+    int sum = 0;
+    for(i = 1; i < 10; i ++) {
+        sum += 1;
+    }
+
+    return sum;
+}
+
+int func_while_stat() {
+    int i = 0;
+    while(i < 10) {
+        i += 1;
+    }
+
+    return i;
+}
+
+int func_if_stat() {
+    int i = 3;
+    if(i == 3) {
+        i + 3;
+    } elsif (i == 4) {
+        i + 4;
+    } else {
+        i + 5;
+    }
+
+    return i;
+}
+
+
+int func_break_stat() {
+    int i = 0;
+    while(i < 10) {
+        if(i == 3) {
+            i += 3;
+            break;
+        }
+    }
+    
+    for(i = 10; i < 100; i ++) {
+        if(i == 100) {
+            break;
+        }
+    }
+
+    return 0;
+}
+
+int func_break_label() {
+    int i;
+    
+    label: while(i < 10) {
+        while( i < 3 ) {
+            if( i == 2 ) {
+                break label;
+            }
+        }
+    }
+
+    return 0;
+}
+
+int func_continue_stat() {
+    int i = 0;
+
+    while(i < 10) {
+        if (i == 0) {
+            continue;
+        }
+    }
+
+    for(i = 10; i; i --) {
+        if(i > 10) {
+            continue;
+        }
+    }
+
+    return 0;
+}
+
+int func_continue_label() {
+    int i = 0;
+
+    label1: while(i < 10) {
+        while(i < 5) {
+            if (i == 0) {
+                continue label1;
+            }
+        }
+    }
+
+    label2: for(i = 10; i; i --) {
+        while(i < 10) {
+            if(i > 10) {
+               continue label2;
+            }
+        }
+    }
+
+    return 0;
+}
+
+int func_decl_stat() {
+    int a = 3 + 6;
+    string str = "abc" + a;
+
+    return 0;
+}

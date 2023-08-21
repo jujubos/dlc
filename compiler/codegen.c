@@ -1,4 +1,5 @@
 #include <stdarg.h>
+#include <string.h>
 #include "decls.h"
 #include "../include/exe.h"
 
@@ -7,6 +8,8 @@
 #define LINENUM_BUF_ALLOC_SIZE (256)
 
 extern OpcodeInfo opcode_info[];
+
+static void walk_statement_list(StatementList *stat_list, Executable *exe);
 
 static 
 struct {
@@ -43,9 +46,12 @@ void backpack(int start_i, int jump_i) {
     codebuf.codes[start_i + 2] = jump_i & 0xff;
 }
 
+int get_pc() {
+    return codebuf.size;
+}
+
 static
 int emit(OpCodeTag opcode, ...) {
-    char *para;
     OpcodeInfo opinfo;
     int operand_sz;
     int start_pc;
@@ -125,11 +131,6 @@ int add_constant_to_pool(Constant *cons, Executable *exe) {
     return exe->constant_seg->size - 1;
 }
 
-static
-void gen_data_segment(Executable *exe) {
-
-}
-
 static int
 type_offset(ValueType basic_type)
 {
@@ -155,13 +156,13 @@ type_offset(ValueType basic_type)
 }
 
 static 
-void pop_to_identifier(Expression *ident_expr) {
+void pop_to_identifier(Identifier *ident) {
     int is_local;
     ValueType basic_type;
     int index;
-    is_local = ident_expr->ident->decl->u.declaration_stat.is_local;
-    basic_type = ident_expr->type->basic_type;
-    index = ident_expr->ident->decl->u.declaration_stat.index;
+    is_local = ident->decl->u.declaration_stat.is_local;
+    basic_type = ident->decl->u.declaration_stat.type->basic_type;
+    index = ident->decl->u.declaration_stat.index;
     if(is_local) {
         emit(POP_STACK_INT + type_offset(basic_type), index);
     } else {
@@ -180,56 +181,87 @@ void gen_code_of_identifier_expression(Expression *expr) {
     if(stat->u.declaration_stat.is_local) {
         emit(PUSH_STACK_INT + type_offset(expr->type->basic_type), stat->u.declaration_stat.index);
     } else {
-        emit(PUSH_STACK_INT + type_offset(expr->type->basic_type), stat->u.declaration_stat.index);
+        emit(PUSH_STATIC_INT + type_offset(expr->type->basic_type), stat->u.declaration_stat.index);
+    }
+}
+
+void gen_code_of_cast_expression(Expression *expr, Executable *exe) {
+    switch (expr->cast_expr.type)
+    {
+    case INT_TO_DOUBLE:
+        emit(CAST_INT_TO_DOUBLE_OP);
+        break;
+    case DOUBLE_TO_INT:
+        emit(CAST_DOUBLE_TO_INT_OP);
+        break;
+    case BOOLEAN_TO_STRING:
+        emit(CAST_BOOLEAN_TO_STRING_OP);
+        break;
+    case INT_TO_STRING:
+        emit(CAST_INT_TO_STRING_OP);
+        break;
+    case DOUBLE_TO_STRING:
+        emit(CAST_DOUBLE_TO_STRING_OP);
+        break;
+    case BOOLEAN_TO_INT:
+    case BOOLEAN_TO_DOUBLE:
+    case INT_TO_BOOLEAN:
+    case DOUBLE_TO_BOOLEAN:
+    case STRING_TO_BOOLEAN:
+    case STRING_TO_INT:
+    case STRING_TO_DOUBLE:
+    case UNKNOWN: 
+    default:
+        break;
     }
 }
 
 static
 void gen_code_of_expression(Expression *expr, Executable *exe) {
     int backpack_i; /* the start index of codes which need to backpack. */
+    Argument *arg;
 
-    linenum = expr->linenum;
     switch (expr->kind)
     {
     case NORMAL_ASSIGN_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.right, exe);
         emit(DUPLICATE);
-        pop_to_identifier(expr->binary_expr.left);
+        pop_to_identifier(expr->binary_expr.left->ident);
         break;
     case ADD_ASSIGN_EXPRESSION:
-        gen_code_of_expression(expr->binary_expr.right, exe);
         gen_code_of_expression(expr->binary_expr.left, exe);
+        gen_code_of_expression(expr->binary_expr.right, exe);
         emit(ADD_INT + type_offset(expr->type->basic_type));
         emit(DUPLICATE);
-        pop_to_identifier(expr->binary_expr.left);
+        pop_to_identifier(expr->binary_expr.left->ident);
         break;
     case SUB_ASSIGN_EXPRESSION:
-        gen_code_of_expression(expr->binary_expr.right, exe);
         gen_code_of_expression(expr->binary_expr.left, exe);
+        gen_code_of_expression(expr->binary_expr.right, exe);
         emit(SUB_INT + type_offset(expr->type->basic_type));
         emit(DUPLICATE);
-        pop_to_identifier(expr->binary_expr.left);
+        pop_to_identifier(expr->binary_expr.left->ident);
         break;
     case MUL_ASSIGN_EXPRESSION:
-        gen_code_of_expression(expr->binary_expr.right, exe);
         gen_code_of_expression(expr->binary_expr.left, exe);
+        gen_code_of_expression(expr->binary_expr.right, exe);
         emit(MUL_INT + type_offset(expr->type->basic_type));
         emit(DUPLICATE);
-        pop_to_identifier(expr->binary_expr.left);
+        pop_to_identifier(expr->binary_expr.left->ident);
         break;
     case DIV_ASSIGN_EXPRESSION:
-        gen_code_of_expression(expr->binary_expr.right, exe);
         gen_code_of_expression(expr->binary_expr.left, exe);
+        gen_code_of_expression(expr->binary_expr.right, exe);
         emit(DIV_INT + type_offset(expr->type->basic_type));
         emit(DUPLICATE);
-        pop_to_identifier(expr->binary_expr.left);
+        pop_to_identifier(expr->binary_expr.left->ident);
         break;
-    case MOD_ASSIGN_EXPRESSION:     
-        gen_code_of_expression(expr->binary_expr.right, exe);
+    case MOD_ASSIGN_EXPRESSION: 
         gen_code_of_expression(expr->binary_expr.left, exe);
+        gen_code_of_expression(expr->binary_expr.right, exe);
         emit(MOD_INT + type_offset(expr->type->basic_type));
         emit(DUPLICATE);
-        pop_to_identifier(expr->binary_expr.left);
+        pop_to_identifier(expr->binary_expr.left->ident);
         break;        
     case ARITH_ADDITIVE_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.left, exe);
@@ -289,7 +321,7 @@ void gen_code_of_expression(Expression *expr, Executable *exe) {
     case LOGICAL_AND_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.left, exe);
         emit(DUPLICATE);
-        backpack_i = emit(JUMP_IF_FALSE);
+        backpack_i = emit(JUMP_IF_FALSE, 0);
         gen_code_of_expression(expr->binary_expr.right, exe);
         emit(LOGICAL_AND_OP);
         backpack(backpack_i, codebuf.size);
@@ -297,7 +329,7 @@ void gen_code_of_expression(Expression *expr, Executable *exe) {
     case LOGICAL_OR_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.left, exe);
         emit(DUPLICATE);
-        backpack_i = emit(JUMP_IF_TRUE);
+        backpack_i = emit(JUMP_IF_TRUE, 0);
         gen_code_of_expression(expr->binary_expr.right, exe);
         emit(LOGICAL_OR_OP);
         backpack(backpack_i, codebuf.size);
@@ -311,17 +343,39 @@ void gen_code_of_expression(Expression *expr, Executable *exe) {
         emit(MINUS_INT  + type_offset(expr->type->basic_type));
         break;
     case FUNC_CALL_EXPRESSION:
-        
+        if(expr->function_call_expr.arg_list != NULL) {
+            for(arg = expr->function_call_expr.arg_list->phead; arg; arg=arg->next) {
+                gen_code_of_expression(arg->expr, exe);
+            }
+        }
+        gen_code_of_expression(expr->function_call_expr.callee, exe);
+        emit(INVOKE);
         break;
     case IDENTIFIER_EXPRESSION:
         gen_code_of_identifier_expression(expr);
         break;
     case COMMA_EXPRESSION:
+        gen_code_of_expression(expr->binary_expr.left, exe);
+        emit(POP_OP);
+        gen_code_of_expression(expr->binary_expr.right, exe);
         break;
     case POST_INCREMENT_EXPRESSION:
-    case POST_DECREMENT_EXPRESSION:
+        gen_code_of_expression(expr->unary_operand, exe);
+        emit(DUPLICATE);
+        emit(PUSH_INT_1BYTE, 1);
+        emit(ADD_INT);
+        pop_to_identifier(expr->unary_operand->ident);
         break;
-    case CAST_EXPRESSION:               
+    case POST_DECREMENT_EXPRESSION:
+        gen_code_of_expression(expr->unary_operand, exe);
+        emit(DUPLICATE);
+        emit(PUSH_INT_1BYTE, 1);
+        emit(SUB_INT);
+        pop_to_identifier(expr->unary_operand->ident); 
+        break;
+    case CAST_EXPRESSION:
+        gen_code_of_cast_expression(expr, exe);
+        break;
     case BOOLEAN_LITERAL_EXPRESSION:
         if(expr->boolean_v == 1) {
             emit(PUSH_INT_1BYTE, 1);
@@ -358,62 +412,206 @@ void gen_code_of_expression(Expression *expr, Executable *exe) {
         }
         break;
     case STRING_LITERAL_EXPRESSION:
-        Constant *cons = (Constant*)MEM_malloc(sizeof(Constant));
-        cons->tag = STRING_CONSTANT;
-        cons->string_constant = expr->string_v;
-        int idx = add_constant_to_pool(cons, exe);
-        emit(PUSH_STRING, idx);
-        MEM_free(cons);
-        break;
+        {
+            Constant *cons = (Constant*)MEM_malloc(sizeof(Constant));
+            cons->tag = STRING_CONSTANT;
+            cons->string_constant = expr->string_v;
+            int idx = add_constant_to_pool(cons, exe);
+            emit(PUSH_STRING, idx);
+            MEM_free(cons);
+            break;
+        }
     default:
         break;
     }
 }
 
-static
-void walk_expression_statement(Statement *stat, Executable *exe) {
-    gen_code_of_expression(stat->u.expr, exe);
+static 
+void walk_block(Block *block, Executable *exe) {
+    /* enter a block */
+    block->outer_block = get_current_compiler()->current_block;
+    get_current_compiler()->current_block = block;
+
+    walk_statement_list(block->declaration_stat_list, exe);
+    walk_statement_list(block->stat_list, exe);
+
+    /* leaver the block */
+    get_current_compiler()->current_block = get_current_compiler()->current_block->outer_block;
 }
 
 static
 void walk_statement_list(StatementList *stat_list, Executable *exe) {
     Statement *stat;
+    int backpack_i; /* the start index of codes which need to backpack. */
 
     for(stat=stat_list->phead; stat; stat = stat->next) {
         switch (stat->kind)
         {
         case EXPRESSION_STATEMENT:
-            walk_expression_statement(stat, exe);
+            gen_code_of_expression(stat->u.expr, exe);
+            emit(POP_OP);
             break;
         case FOR_STATEMENT:
+        {
+            BackPackPoint *bp;
+
+            gen_code_of_expression(stat->u.for_stat.init_expr, exe);
+            emit(POP_OP);
+            stat->u.for_stat.continue_pc = get_pc();
+            gen_code_of_expression(stat->u.for_stat.cond_expr, exe);
+            backpack_i = emit(JUMP_IF_FALSE, 0);
+            walk_block(stat->u.for_stat.block, exe);
+            emit(JUMP, stat->u.for_stat.continue_pc);
+
+            backpack(backpack_i, get_pc());
+            for(bp = stat->u.for_stat.backpack_points; bp; bp=bp->next) {
+                backpack(bp->address, get_pc());
+            }
             break;
+        }
         case WHILE_STATEMENT:
+        {
+            BackPackPoint *bp;
+
+            stat->u.while_stat.continue_pc = get_pc();
+            gen_code_of_expression(stat->u.while_stat.cond_expr, exe);
+            backpack_i = emit(JUMP_IF_FALSE, 0);
+            walk_block(stat->u.while_stat.block, exe);
+            emit(JUMP, stat->u.while_stat.continue_pc);
+
+            backpack(backpack_i, get_pc());
+            for(bp = stat->u.while_stat.backpack_points; bp; bp=bp->next) {
+                backpack(bp->address, get_pc());
+            }
             break;
+        }
         case FOREACH_STATEMENT:
             break;
         case IF_STATEMENT:
+        {
+            gen_code_of_expression(stat->u.if_stat.cond, exe);
+            backpack_i = emit(JUMP_IF_FALSE, 0);
+            walk_block(stat->u.if_stat.then_block, exe);
+            backpack(backpack_i, get_pc());
+            if(stat->u.if_stat.elif_list != NULL) {
+                Elif *e = stat->u.if_stat.elif_list;
+                while(e != NULL) {
+                    gen_code_of_expression(e->cond, exe);
+                    backpack_i = emit(JUMP_IF_FALSE, 0);
+                    walk_block(e->block, exe);
+                    backpack(backpack_i, get_pc());
+                    e = e->next;
+                }
+            }
+            if(stat->u.if_stat.else_block != NULL) {
+               walk_block(stat->u.if_stat.else_block, exe);
+            }
             break;
+        }
         case RETURN_STATEMENT:
+        {
+            if(stat->u.return_stat.ret_expr != NULL) {
+                gen_code_of_expression(stat->u.return_stat.ret_expr, exe);
+            }
+            emit(RETURN);
             break;
+        }
         case TRY_STATEMENT:
             break;
         case THROW_STATEMENT:
             break;
         case BREAK_STATEMENT:
+        {
+            Block *b = get_current_compiler()->current_block;
+            if(stat->u.break_stat.label == NULL) {
+                while(b) {
+                    BackPackPoint *bp;
+                    if(b->type == WHILE_STATEMENT_BLOCK) {
+                        backpack_i = emit(JUMP, 0);
+                        bp = (BackPackPoint*)MEM_malloc(sizeof(BackPackPoint));
+                        bp->address = backpack_i;
+                        bp->next = b->stat->u.while_stat.backpack_points;
+                        b->stat->u.while_stat.backpack_points = bp;
+                        break;
+                    } else if(b->type == FOR_STATEMENT_BLOCK) {
+                        backpack_i = emit(JUMP, 0);
+                        bp = (BackPackPoint*)MEM_malloc(sizeof(BackPackPoint));
+                        bp->address = backpack_i;
+                        bp->next = b->stat->u.for_stat.backpack_points;
+                        b->stat->u.for_stat.backpack_points = bp;
+                        break;
+                    }
+                    b = b->outer_block;
+                }
+            } else {
+                while(b) {
+                    BackPackPoint *bp;
+                    if(b->type == WHILE_STATEMENT_BLOCK && b->stat->u.while_stat.label != NULL) {
+                        if(strcmp(b->stat->u.while_stat.label->name, stat->u.break_stat.label->name) == 0) {
+                            backpack_i = emit(JUMP, 0);
+                            bp = (BackPackPoint*)MEM_malloc(sizeof(BackPackPoint));
+                            bp->address = backpack_i;
+                            bp->next = stat->u.while_stat.backpack_points;
+                            stat->u.while_stat.backpack_points = bp;
+                            break;
+                        }
+                    } else if(b->type == FOR_STATEMENT_BLOCK && b->stat->u.for_stat.label != NULL) {
+                        if(strcmp(b->stat->u.for_stat.label->name, stat->u.break_stat.label->name) == 0) {
+                            backpack_i = emit(JUMP, 0);
+                            bp = (BackPackPoint*)MEM_malloc(sizeof(BackPackPoint));
+                            bp->address = backpack_i;
+                            bp->next = stat->u.for_stat.backpack_points;
+                            stat->u.for_stat.backpack_points = bp;
+                            break;
+                        }
+                    }
+                    b = b->outer_block;
+                }
+            }
             break;
+        }
         case CONTINUE_STATEMENT:
+        {
+            Block *b = get_current_compiler()->current_block;
+            if(stat->u.continue_stat.label == NULL) {
+                while(b) {
+                    if(b->type == WHILE_STATEMENT_BLOCK) {
+                        backpack_i = emit(JUMP, b->stat->u.while_stat.continue_pc);
+                        break;
+                    } else if(b->type == FOR_STATEMENT_BLOCK) {
+                        backpack_i = emit(JUMP, b->stat->u.for_stat.continue_pc);
+                        break;
+                    }
+                    b = b->outer_block;
+                }
+            } else {
+                while(b) {
+                    if(b->type == WHILE_STATEMENT_BLOCK && b->stat->u.while_stat.label != NULL) {
+                        if(strcmp(b->stat->u.while_stat.label->name, stat->u.break_stat.label->name) == 0) {
+                            backpack_i = emit(JUMP, b->stat->u.while_stat.continue_pc);
+                            break;
+                        }
+                    } else if(b->type == FOR_STATEMENT_BLOCK && b->stat->u.for_stat.label != NULL) {
+                        if(strcmp(b->stat->u.for_stat.label->name, stat->u.break_stat.label->name) == 0) {
+                            backpack_i = emit(JUMP, b->stat->u.for_stat.continue_pc);
+                            break;
+                        }
+                    }
+                    b = b->outer_block;
+                }
+            }
             break;
+        }
         case DECLARATION_STATEMENT:
+            if(stat->u.declaration_stat.initializer != NULL) {
+                gen_code_of_expression(stat->u.declaration_stat.initializer, exe);
+                pop_to_identifier(stat->u.declaration_stat.ident);
+            }
             break;    
         default:
             break;
         }
     }
-}
-
-static 
-void walk_block(Block *block, Executable *exe) {
-    walk_statement_list(block->stat_list, exe);
 }
 
 /*
@@ -427,7 +625,8 @@ void copy_function_definition(FunctionDefinition *fd, Function *f) {
     f->name = fd->ident->name;
 
     /* copy local variables info */
-    f->local_vars = MEM_malloc(sizeof(Variable) * fd->local_variable_cnt);
+    f->local_var_cnt = fd->local_variable_cnt;
+    f->local_vars = MEM_malloc(sizeof(Variable) * f->local_var_cnt);
     for(int i = 0; i < fd->local_variable_cnt; i ++) {
         stat = fd->local_variables[i];
         f->local_vars[i].name = stat->u.declaration_stat.ident->name;
@@ -465,10 +664,6 @@ void gen_code_segment(Executable *exe) {
     }
 }
 
-void gen_top_codes(Executable *exe) {
-
-}
-
 Executable* alloc_excutable() {
     Executable *exe;
 
@@ -494,19 +689,54 @@ Executable* alloc_excutable() {
     return exe;
 }
 
+static
+void gen_data_segment(Executable *exe) {
+    Compiler *comp;
+    Statement *stat;
+    Variable *var;
+    int i;
+
+    comp = get_current_compiler();
+    exe->data_seg->size = comp->declaration_stat_list->len;
+    exe->data_seg->arr = (Variable*)MEM_malloc(sizeof(Variable) * exe->data_seg->size);
+    i = 0;
+    for(stat=comp->declaration_stat_list->phead; stat; stat=stat->next) {
+        var = &exe->data_seg->arr[i ++];
+        var->type = stat->u.declaration_stat.type;
+        var->name = stat->u.declaration_stat.ident->name;
+    }
+}
+
+static
+void gen_top_codes(Executable *exe) {
+    Compiler *comp;
+
+    comp = get_current_compiler();
+    reset_code_buf();
+    reset_linenum_buf();
+    walk_statement_list(comp->declaration_stat_list, exe);
+    walk_statement_list(comp->statement_list, exe);
+    exe->top_code_size = codebuf.size;
+    exe->top_codes = (Byte*)MEM_malloc(sizeof(Byte) * exe->top_code_size);
+    memcpy(exe->top_codes, codebuf.codes, codebuf.size);
+
+}
+
 /*
     After semantic analysis, all statement'semantic is right, and information in symbol table is completed.
     So in code generation step, just utilizing symbol table, walk ast to generate code.
 */
 Executable* walk_ast_for_gen_exe() {
-    Compiler *comp;
     Executable *exe;
 
-    comp = get_current_compiler();
     exe = alloc_excutable();
-    // gen_constant_segment(exe);
-    // gen_data_segment(exe);
-    // gen_top_codes(exe);
+    /*
+        Do not need this, generate constant segment during walk ast.
+        Specifically, each time walking literal expression, alloc a constant to constant pool.
+    */
+    // gen_constant_segment(exe); 
+    gen_data_segment(exe);
+    gen_top_codes(exe);
     gen_code_segment(exe);
     
     return exe;

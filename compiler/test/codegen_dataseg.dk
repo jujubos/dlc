@@ -1,0 +1,14 @@
+int a = 65536;
+double d = 1.33;
+
+string str = "ddl";
+
+boolean b = true;
+
+int func() {
+    int t = 65537;
+    string s = "hello world";
+    double dd = 4.5551;
+    
+    return 0;
+}

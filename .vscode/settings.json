@@ -5,6 +5,7 @@
         "type_traits": "c",
         "mem.h": "c",
         "exe.h": "c",
-        "decls.h": "c"
+        "decls.h": "c",
+        "stdarg.h": "c"
     }
 }

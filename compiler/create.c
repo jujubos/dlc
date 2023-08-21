@@ -64,6 +64,7 @@ void define_function(TypeSpecifier *ts, Identifier *ident, ParameterList *para_l
     func_def = create_function_definition(ts, ident, para_list, block);
     if(block) {
         block->type = FUNCTION_BLOCK;
+        block->func_def = func_def;
     }
     if(!comp->function_list->phead) {
         comp->function_list->phead = func_def;
@@ -180,6 +181,8 @@ void chain_top_level_statement(Statement *stat) {
     if(stat->kind != DECLARATION_STATEMENT) {
         stat_list = comp->statement_list;
     } else {
+        stat->u.declaration_stat.is_local = 0;
+        stat->u.declaration_stat.index = comp->declaration_stat_list->len;
         stat_list = comp->declaration_stat_list;
     }
 
@@ -349,8 +352,10 @@ Statement* create_while_statement(Identifier *label, Expression *cond, Block *bl
     stat->u.while_stat.label = label;
     stat->u.while_stat.cond_expr = cond;
     stat->u.while_stat.block = block;
+    stat->u.while_stat.backpack_points = NULL;
     stat->next = NULL;
     block->type = WHILE_STATEMENT_BLOCK;
+    block->stat = stat;
 
     return stat;
 }
@@ -365,8 +370,10 @@ Statement* create_for_statement(Identifier *label, Expression *init, Expression 
     stat->u.for_stat.cond_expr = cond;
     stat->u.for_stat.post_expr = post;
     stat->u.for_stat.block = block;
+    stat->u.for_stat.backpack_points = NULL;
     stat->next = NULL;
     block->type = FOR_STATEMENT_BLOCK;
+    block->stat = stat;
 
     return stat;
 }
@@ -380,6 +387,7 @@ Statement* create_foreach_statement(Identifier *label, Identifier *ident, Expres
     stat->u.foreach_stat.ident = ident;
     stat->u.foreach_stat.expr = expr;
     stat->u.foreach_stat.block = block;
+    stat->u.foreach_stat.backpack_points = NULL;
     stat->next = NULL;
     block->type = FOR_STATEMENT_BLOCK;
 
@@ -456,6 +464,9 @@ Statement* create_declaration_statement(TypeSpecifier *ts, Identifier *ident, Ex
     stat->u.declaration_stat.ident = ident;
     stat->u.declaration_stat.initializer = initializer;
     stat->next = NULL;
+    ident->decl = stat;
+    ident->is_func = 0;
+    ident->func_def = NULL;
 
     return stat;
 }

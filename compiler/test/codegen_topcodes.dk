@@ -1,0 +1,63 @@
+//normal assign
+boolean b;
+int i;
+double d;
+string s; 
+
+b = true;
+
+i = 3;
+
+d = 6.6;
+
+s = "abc";
+
+//non-normal assign
+
+i -= 3;
+
+d += 10;
+
+i /= 3;
+
+i *= 3;
+
+i %=
+
+//arith expr
+i + 1;
+1 - 2;
+3 * 3;
+3 / 3;
+5 % 2;
+s + "123";
+
+//relation expr
+s < "abc";
+i > 1;
+1 == 1;
+1 != 1;
+1 >= 1;
+1 <= 1;
+
+//logical expr
+1 == 1 && 1 != 1;
+1 >= 1 || 1 <= 1;
+!(1 == 1);
+
+//comma expr and post expr
+i ++, i --;
+
+//func call expr
+int func_no_arg() {
+    1 + 2;
+    func_with_arg(1, 2);
+}
+
+int func_with_arg(int a, int b) {
+    a + b;
+    func_no_arg();
+}
+
+func_no_arg();
+func_with_arg(33, 44);

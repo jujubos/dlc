@@ -1,0 +1,14 @@
+int a = 10;
+
+string str = "hello world";
+
+double d = 1.33;
+
+boolean b = true;
+
+int func1(int x, int y) {
+    int t = x + y;
+    t --;
+
+    return 0;
+}

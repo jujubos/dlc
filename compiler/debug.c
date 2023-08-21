@@ -331,6 +331,7 @@ void disass_func_codes(Function *func, Executable *exe) {
             table_set_int(tab, row, 4, idx);
             pc += 2;          
             if(opcode >= 8 && opcode <= 13) {           /* push_stack_int */
+                if(idx >= func->para_cnt) idx -= 2;     /* idx -= (sizeof(CallerInfo) - 1) / sizeof(Value) + 1 */
                 Variable v = func->local_vars[idx];
                 table_set_string(tab, row, 5, v.name);
             } else if(opcode >= 14 && opcode <= 19) {   /* push_static_int */

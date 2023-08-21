@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "decls.h"
+#include "../include/VM.h"
 #include <table.h>
 
 int main(int argc, char **argv) {
@@ -19,7 +20,10 @@ int main(int argc, char **argv) {
 
     compiler = create_compiler();
     Executable *exe =  compile(compiler, fp);
-    
+    init_virtual_machine();
+    load_executable_file(exe);
+    VirtualMachine* vm = get_virtual_machine();
+    disassemble_exe(exe);
     // disassemble_ast(compiler);
     // disassemble_exe(exe);
 

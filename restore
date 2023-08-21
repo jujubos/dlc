@@ -12,3 +12,6 @@
     | 和semantic analysis一样，一个语句一个语句的完成并测试
     | 当前进度：expression statement还没完成。为了测试，先完成字面量表达式和标识符表达式。
     | 当前进度: expression statement还差几个(COMMA, CAST, POST_*, FUNC_CALL).
+下一步: Execute()
+    | 从Execute()切入，逐步完成虚拟机
+    

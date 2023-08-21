@@ -1,7 +1,16 @@
 #ifndef __EXE__
 #define __EXE__
+#include <stdint.h>
 
 /* enum_begin */
+typedef enum {
+    UNDETERMIEND,
+    BOOLEAN_TYPE,
+    INT_TYPE,
+    DOUBLE_TYPE,
+    STRING_TYPE
+} ValueType;
+
 typedef enum {
     INT_CONSTANT,
     DOUBLE_CONSTANT,
@@ -97,6 +106,9 @@ typedef struct CodeSegment      CodeSegment;
 typedef struct Function         Function;
 typedef struct OpcodeInfo       OpcodeInfo;
 /* typedef_end */
+struct TypeSpecifier {
+    ValueType basic_type;
+};
 
 struct OpcodeInfo {
     char    *mnemonic;

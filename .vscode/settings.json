@@ -6,6 +6,7 @@
         "mem.h": "c",
         "exe.h": "c",
         "decls.h": "c",
-        "stdarg.h": "c"
+        "stdarg.h": "c",
+        "vm.h": "c"
     }
 }

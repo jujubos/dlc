@@ -14,6 +14,7 @@ OBJS= \
 	semantic.o\
 	debug.o\
 	codegen.o\
+	../vm/vm.o \
 
 CFLAGS = -c -g -Wall -Wswitch-enum -std=c11 -pedantic
 INCLUDES = \
@@ -21,6 +22,7 @@ INCLUDES = \
   -I../include
 
 $(TARGET):$(OBJS)
+	cd ../vm; $(MAKE);
 	cd ../memory; $(MAKE);
 	cd ../debug; $(MAKE);
 	$(CC) $(OBJS) -o $@ -lm
@@ -43,6 +45,8 @@ lex.yy.o: lex.yy.c decls.h ../include/MEM.h
 	cd ../memory; $(MAKE);
 ../debug/dbg.o:
 	cd ../debug; $(MAKE);
+../vm/vm.o:
+	cd ../vm; $(MAKE);
 ############################################################
 common.o: common.c ../include/MEM.h ../include/DBG.h decls.h
 compiler.o: compiler.c ../include/MEM.h ../include/DBG.h decls.h

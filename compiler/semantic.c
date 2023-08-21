@@ -33,6 +33,12 @@ FunctionDefinition* search_function(char *name) {
     return NULL;
 }
 
+/*
+    1.是否在当前块？
+    2.是否在上层块？上上层块？
+    3.如果当前在函数中，是否是参数？
+    4.是否在顶层？
+*/
 Statement* search_declaration(char *name) {
     Compiler *comp;
     Statement *stat, *ident_finded;
@@ -46,16 +52,29 @@ Statement* search_declaration(char *name) {
         while(pos_blk) {
             for(stat=pos_blk->declaration_stat_list->phead; stat; stat=stat->next) {
                 if(strcmp(stat->u.declaration_stat.ident->name, name) == 0) {
-                    if(!finded) {
-                        finded = 1;
-                        ident_finded = stat;
-                    } else {
-                        printf("search_declaration,identifier redefined, parameter and block variable conflict:%s\n", name);
-                        exit(1);
-                    }
+                    finded = 1;
+                    ident_finded = stat;
+                    break;
                 }
             }
+            if(finded) break;
             pos_blk = pos_blk->outer_block;
+        }
+    }
+
+    if(cur_func != NULL && cur_func->param_list->len > 0) {
+        for(int i = 0; i < cur_func->param_list->len; i ++) {
+            stat = cur_func->local_variables[i];
+            if(strcmp(stat->u.declaration_stat.ident->name, name) == 0) {
+                if(finded) {
+                    printf("identifier redefined:para and block:%s\n", name);
+                    exit(1);
+                } else {
+                    ident_finded = stat;
+                    finded = 1;
+                    break;
+                }
+            }
         }
     }
 
@@ -260,7 +279,7 @@ void type_check_and_cast(Expression *expr) {
         break;
     case IDENTIFIER_EXPRESSION:
         if(!fill_identifier(expr->ident)) {
-            printf("identifier not found:%s", expr->ident->name);
+            printf("identifier not found:%s\n", expr->ident->name);
             exit(1);
         }
         if(expr->ident->is_func) {
@@ -538,6 +557,7 @@ void assemble_local_variable(FunctionDefinition *fd) {
     fd->local_variables = (Statement**)Malloc(sizeof(Statement*) * sz);
     for(param_p=fd->param_list->phead; param_p; param_p=param_p->next) {
         Statement *d = (Statement*)Malloc(sizeof(Statement));
+        d->kind = DECLARATION_STATEMENT;
         d->u.declaration_stat.type = param_p->type;
         d->u.declaration_stat.ident = param_p->ident;
         d->u.declaration_stat.index = fd->local_variable_cnt;

@@ -5,7 +5,7 @@
             "name": "DebugForDiksam",
             "type": "cppdbg",
             "request": "launch",
-            "args": ["./compiler/test/codegen_dataseg.dk"],
+            "args": ["./compiler/test/vm.dk"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

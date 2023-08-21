@@ -6,8 +6,6 @@
 extern int yyparse(void);
 extern FILE *yyin;
 
-
-
 Executable* compile(Compiler *compiler, FILE *fp) {
     Executable *exe;
     

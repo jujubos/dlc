@@ -25,8 +25,6 @@ struct {
     int         cap;
 } linenum_buf;
 
-static int linenum;
-
 void reset_code_buf() {
     codebuf.size = 0;
 }
@@ -614,15 +612,24 @@ void walk_statement_list(StatementList *stat_list, Executable *exe) {
     }
 }
 
-/*
-    todo 
-*/
 static 
 void copy_function_definition(FunctionDefinition *fd, Function *f) {
     Statement *stat;
+    Parameter *para;
 
     f->type = fd->type;
     f->name = fd->ident->name;
+
+    /* copy parameters */
+    if(fd->param_list->len > 0) {
+        f->para_cnt = fd->param_list->len;
+        f->paras = MEM_malloc(sizeof(Variable) * f->para_cnt);
+        int i = 0;
+        for(para=fd->param_list->phead; para; para=para->next, i++) {
+            f->paras[i].name = para->ident->name;
+            f->paras[i].type = para->type;
+        }
+    }
 
     /* copy local variables info */
     f->local_var_cnt = fd->local_variable_cnt;
@@ -632,6 +639,38 @@ void copy_function_definition(FunctionDefinition *fd, Function *f) {
         f->local_vars[i].name = stat->u.declaration_stat.ident->name;
         f->local_vars[i].type = stat->u.declaration_stat.type;
     }
+}
+
+int calc_stk_size_needed(Byte *codes, int code_size) {
+    int pc;
+    OpcodeInfo *opinfo;
+    Byte opcode;
+    int s;
+
+    s = 0;
+    pc = 0;
+    while(pc < code_size) {
+        opcode = codes[pc ++];
+        opinfo = &opcode_info[opcode];
+        if(opinfo->stk_sz_needed > 0) {
+            s += opinfo->stk_sz_needed;
+        }
+        switch (opinfo->para[0])
+        {
+        case 'b':
+            pc += 1;
+            break;
+        case 'd':
+        case 's':
+        case 'p':
+            pc += 2;
+            break;
+        default:
+            break;
+        }
+    }
+
+    return s;
 }
 
 static
@@ -656,6 +695,8 @@ void gen_code_segment(Executable *exe) {
             f->codes = (Byte*)MEM_malloc(sizeof(Byte) * codebuf.size);
             memcpy(f->codes, codebuf.codes, codebuf.size);
             f->code_size = codebuf.size;
+            f->stk_sz_needed = calc_stk_size_needed(f->codes, f->code_size);
+            f->is_implemented = 1;
             // f->line_numbers = linenum_buf.arr;
             // f->line_number_size = linenum_buf.size;
         } else {
@@ -719,7 +760,7 @@ void gen_top_codes(Executable *exe) {
     exe->top_code_size = codebuf.size;
     exe->top_codes = (Byte*)MEM_malloc(sizeof(Byte) * exe->top_code_size);
     memcpy(exe->top_codes, codebuf.codes, codebuf.size);
-
+    exe->stk_sz_needed = calc_stk_size_needed(exe->top_codes, exe->top_code_size);
 }
 
 /*

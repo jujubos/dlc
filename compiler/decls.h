@@ -41,14 +41,6 @@ typedef enum {
 } CompileError;
 
 typedef enum {
-    UNDETERMIEND,
-    BOOLEAN_TYPE,
-    INT_TYPE,
-    DOUBLE_TYPE,
-    STRING_TYPE
-} ValueType;
-
-typedef enum {
     ARITH_ADDITIVE_EXPRESSION,
     ARITH_SUBSTRACTION_EXPRESSION,
     ARITH_MULTIPLICATION_EXPRESSION,
@@ -134,10 +126,6 @@ typedef struct BackPackPoint BackPackPoint;
 typedef struct Stack Stack;
 
 /* typedef_end */
-struct TypeSpecifier {
-    ValueType basic_type;
-};
-
 struct CommaExpression {
     Expression *left;
     Expression *right;
@@ -432,6 +420,9 @@ int stk_size(struct Stack *stk);
 /* debug.c */
 void disassemble_ast();
 void disassemble_exe(Executable *exe);
+
+/* codegen.c */
+int calc_stk_size_needed(Byte *codes, int code_size);
 
 /* function_end */
 

@@ -1,4 +1,4 @@
-TARGET=diskam
+TARGET=ddl
 CC=gcc
 OBJS= \
 	opcode.o\

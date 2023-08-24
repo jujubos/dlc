@@ -1,0 +1,4 @@
+- git clone https://github.com/jujubos/ddl.git
+- cd ddl
+- make
+- ./ddl test/quicksort.dl

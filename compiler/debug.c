@@ -3,8 +3,6 @@
 
 #define IDENTIFIER_MAX_LEN 256
 
-extern OpcodeInfo opcode_info[];
-
 typedef enum {
     TABLE_TYPE_UNSET,
     TABLE_INT,
@@ -29,6 +27,10 @@ struct table {
     int      col_num;
     int      row_num; /* 0 means no rows. 1 means there is one row. */
 };
+
+extern OpcodeInfo opcode_info[];
+
+void print_top_decl_table(table *tab);
 
 table* table_new() {
     table *tab;
@@ -198,7 +200,11 @@ char* exprkinds[] = {
     "INT_LITERAL_EXPRESSION",
     "DOUBLE_LITERAL_EXPRESSION",
     "STRING_LITERAL_EXPRESSION",
-    "CAST_EXPRESSION"
+    "CAST_EXPRESSION",
+    "ARRAY_LITERAL_EXPRESSION",
+    "ARRAY_CREATION_EXPRESSION",
+    "INDEX_EXPRESSION",
+    "NULL_EXPRESSION",
 };
 
 char *value_types[] = {
@@ -207,6 +213,11 @@ char *value_types[] = {
     "INT_TYPE",
     "DOUBLE_TYPE",
     "STRING_TYPE",
+    "NULL_TYPE", /* may be not necessary. */
+};
+
+char *derive_types[] = {
+    "ARRAY",
 };
 
 void print_seperate_line(char *line, int n) {
@@ -216,15 +227,17 @@ void print_seperate_line(char *line, int n) {
     printf("\n");
 }
 
-void print_line(char *cell1, char *cell2, char *cell3, char *cell4, char *cell5, char *cell6) {
-    printf("%-20s\t", cell1);
-    printf("%-20s\t", cell2);
-    printf("%-20s\t", cell3);
-    printf("%-20s\t", cell4);
-    printf("%-20s\t", cell5);
-    printf("%-20s\t", cell6);
+void print_line(int n, ...) {
+    va_list args;
+    va_start(args, n);
+    for(int i = 0; i < n; i ++) {
+        char * arg = va_arg(args, char*);
+        printf("%-20s\t", arg);
+    }
     printf("\n");
-    print_seperate_line("-------------", 6);
+    print_seperate_line("-------------", n);
+
+    va_end(args);
 }
 
 void print_table(table *tab) {
@@ -238,75 +251,26 @@ void print_table(table *tab) {
             printf("%-20s\t", buf);
         }
         printf("\n");
-        print_seperate_line("-------------", 6);
+        print_seperate_line("-------", 6);
     }
-}
-
-/*
-    0       Func1       *           *
-    1       type        exprtype    kind
-    
-    #       LocalVar    *           *
-    name    index       *           *
-*/
-static
-void disass_func(FunctionDefinition *fd) {
-    Statement *stat;
-    table *tab;
-    int id = 0;
-    int row;
-
-    tab = table_new();
-    table_add_column(tab, "", TABLE_INT);
-    table_add_column(tab, "", TABLE_STRING);
-    table_add_column(tab, "", TABLE_STRING);
-    table_add_column(tab, "", TABLE_STRING);
-    row = table_add_row(tab);
-    table_set_int(tab, row, 1, id ++);
-    table_set_string(tab, row, 2, fd->ident->name);
-    table_set_string(tab, row, 3, "******");
-    table_set_string(tab, row, 4, "******");
-    for(stat = fd->block->stat_list->phead; stat; stat = stat->next) {
-        row = table_add_row(tab);
-        table_set_int(tab, row, 1, id ++);
-        table_set_string(tab, row, 2, stat_kinds[stat->kind]);
-        if(stat->kind == EXPRESSION_STATEMENT) {
-            table_set_string(tab, row, 3, value_types[stat->u.expr->type->basic_type]);
-            table_set_string(tab, row, 4, exprkinds[stat->u.expr->kind]);
-        }
-    }
-    row = table_add_row(tab);
-    table_set_int(tab, row, 1, id ++);
-    table_set_string(tab, row, 2, "LocalVars");
-    table_set_string(tab, row, 3, "######");
-    table_set_string(tab, row, 4, "######");
-    for(int i = 0; i < fd->local_variable_cnt; i ++) {
-        Statement *d = fd->local_variables[i];
-        int row;
-        row = table_add_row(tab);
-        table_set_int(tab, row, 1, d->u.declaration_stat.index);
-        table_set_string(tab, row, 2, d->u.declaration_stat.ident->name);
-    }
-    
-    print_table(tab);
-
 }
 
 static
 void disass_func_codes(Function *func, Executable *exe) {
     table *tab = NULL;
     int row;
-    int pc = 0, imm8, imm16, idx;
+    int pc = 0, imm8, imm16, idx, dim_cnt, typ_idx;
     Byte opcode;
 
     tab = table_new();
 
     table_add_column(tab, "", TABLE_INT);    
-    table_add_column(tab, "", TABLE_STRING); /* OpCode Name */
-    table_add_column(tab, "", TABLE_INT);    /* Operand size */
-    table_add_column(tab, "", TABLE_INT);    /* Index or Operand */
-    table_add_column(tab, "", TABLE_STRING); /* Identifier */
-    table_add_column(tab, "", TABLE_INT);    /* label */
+    table_add_column(tab, "", TABLE_STRING); /* 2.OpCode Name */
+    table_add_column(tab, "", TABLE_INT);    /* 3.Operand size */
+    table_add_column(tab, "", TABLE_INT);    /* 4.Operand1 */
+    table_add_column(tab, "", TABLE_INT);    /* 5.Operand2 */
+    table_add_column(tab, "", TABLE_STRING); /* 6.Identifier */
+    table_add_column(tab, "", TABLE_INT);    /* 7.label */
 
     while(pc < func->code_size) {
         row = table_add_row(tab);
@@ -331,14 +295,14 @@ void disass_func_codes(Function *func, Executable *exe) {
             table_set_int(tab, row, 4, idx);
             pc += 2;          
             if(opcode >= 8 && opcode <= 13) {           /* push_stack_int */
-                if(idx >= func->para_cnt) idx -= 2;     /* idx -= (sizeof(CallerInfo) - 1) / sizeof(Value) + 1 */
+                // if(idx >= func->para_cnt + 1) idx -= 1; /* caller info occupies one position of stack. */
                 Variable v = func->local_vars[idx];
-                table_set_string(tab, row, 5, v.name);
+                table_set_string(tab, row, 6, v.name);
             } else if(opcode >= 14 && opcode <= 19) {   /* push_static_int */
                 Variable v = exe->data_seg->arr[idx];
-                table_set_string(tab, row, 5, v.name);
+                table_set_string(tab, row, 6, v.name);
             } else if(opcode >= 63 && opcode <= 65) {   /* jump label */
-                table_set_int(tab, row, 6, idx);
+                table_set_int(tab, row, 7, idx);
             }
             break;
         case 'p':
@@ -347,13 +311,22 @@ void disass_func_codes(Function *func, Executable *exe) {
             table_set_int(tab, row, 4, idx);
             pc += 2;
             break;
+        case 'a':
+        {
+            dim_cnt = func->codes[pc];
+            typ_idx = ((int)func->codes[pc + 1] << 8) + func->codes[pc + 2];
+            table_set_int(tab, row, 3, 3);
+            table_set_int(tab, row, 4, dim_cnt);
+            table_set_int(tab, row, 5, typ_idx);
+            pc += 3;
+        }
         case '\0':
         default:
             break;
         }
     }
     /* print table header */
-    print_line("START_PC", "OPCODE_NAME", "OPERAND_SIZE", "OPERAND", "IDENTIFIER", "LABEL");
+    print_line(7, "START_PC", "OPCODE_NAME", "OPERAND_SIZE", "OPERAND1", "OPERAND2", "IDENTIFIER", "LABEL");
     print_table(tab);
 
 }
@@ -361,7 +334,7 @@ void disass_func_codes(Function *func, Executable *exe) {
 void disass_codes(Executable *exe, Byte* codes, int code_size, Function *func) {
     table *tab = NULL;
     int row;
-    int pc = 0, imm8, imm16, idx;
+    int pc = 0, imm8, imm16, idx, dim_cnt, typ_idx;
     Byte opcode;
 
     tab = table_new();
@@ -411,6 +384,15 @@ void disass_codes(Executable *exe, Byte* codes, int code_size, Function *func) {
             table_set_int(tab, row, 4, idx);
             pc += 2;
             break;
+        case 'a':
+        {
+            dim_cnt = codes[pc];
+            typ_idx = ((int)codes[pc + 1] << 8) + codes[pc + 2];
+            table_set_int(tab, row, 3, 3);
+            table_set_int(tab, row, 4, dim_cnt);
+            table_set_int(tab, row, 5, typ_idx);
+            pc += 3;
+        }
         case '\0':
         default:
             break;
@@ -418,7 +400,7 @@ void disass_codes(Executable *exe, Byte* codes, int code_size, Function *func) {
     }
 
     /* print table header */
-    print_line("START_PC", "OPCODE_NAME", "OPERAND_SIZE", "OPERAND", "IDENTIFIER", "LABEL");
+    print_line(7, "START_PC", "OPCODE_NAME", "OPERAND_SIZE", "OPERAND1", "OPERAND2", "IDENTIFIER", "LABEL");
     print_table(tab);
 }
 
@@ -441,8 +423,8 @@ void disass_data_seg(Executable *exe) {
     }
 
     /* print table */
-    print_seperate_line("*************", 6);
-    print_line("Index", "Type", "Name", "","","");
+    print_seperate_line("****************", 6);
+    print_line(3, "Index", "Type", "Name");
     print_table(tab);
 }
 
@@ -478,8 +460,8 @@ void disass_const_seg(Executable *exe) {
     }
 
     /* print table */
-    print_seperate_line("#############", 6);
-    print_line("Index", "Constant Type", "Int", "Double", "String", "");
+    print_seperate_line("################", 6);
+    print_line(5, "Index", "Constant Type", "Int", "Double", "String");
     print_table(tab);
 }
 
@@ -488,7 +470,7 @@ void disassemble_exe(Executable *exe) {
 
     for(int i = 0; i < exe->code_seg->size; i ++) {
         f = exe->code_seg->arr[i];
-        print_line("<FUNCTION>", f.name, "", "", "", "");
+        print_line(2, "<FUNCTION>", f.name);
         disass_func_codes(&f, exe);
     }
 
@@ -502,11 +484,235 @@ void disassemble_exe(Executable *exe) {
 void disassemble_ast() {
     Compiler *comp;
     FunctionDefinition *fd;
-
+    Statement *stat;
+    table *tab;
+    int id;
+    int row;
+    
     comp = get_current_compiler();
     for(fd=comp->function_list->phead; fd; fd=fd->next) {
-        disass_func(fd);
+        if(fd->block == NULL) continue;
+        tab = table_new();
+        table_add_column(tab, "", TABLE_INT);
+        table_add_column(tab, "", TABLE_STRING);
+        table_add_column(tab, "", TABLE_STRING);
+        table_add_column(tab, "", TABLE_STRING);
+        id = 0;
+        for(stat = fd->block->stat_list->phead; stat; stat = stat->next) {
+            row = table_add_row(tab);
+            table_set_int(tab, row, 1, id ++);
+            table_set_string(tab, row, 2, stat_kinds[stat->kind]);
+            if(stat->kind == EXPRESSION_STATEMENT) {
+                table_set_string(tab, row, 4, exprkinds[stat->u.expr->kind]);
+            }
+        }
+        for(stat = fd->block->declaration_stat_list->phead; stat; stat = stat->next) {
+            row = table_add_row(tab);
+            table_set_int(tab, row, 1, id ++);
+            table_set_string(tab, row, 2, stat_kinds[stat->kind]);
+            table_set_string(tab, row, 3, value_types[stat->u.declaration_stat.type->basic_type]);
+            if(stat->u.declaration_stat.initializer)
+                table_set_string(tab, row, 4, exprkinds[stat->u.declaration_stat.initializer->kind]);
+        }
+        row = table_add_row(tab);
+        table_set_int(tab, row, 1, id ++);
+        table_set_string(tab, row, 2, "LocalVars");
+        table_set_string(tab, row, 3, "######");
+        table_set_string(tab, row, 4, "######");
+        for(int i = 0; i < fd->local_variable_cnt; i ++) {
+            Statement *d = fd->local_variables[i];
+            int row;
+            row = table_add_row(tab);
+            table_set_int(tab, row, 1, d->u.declaration_stat.index);
+            table_set_string(tab, row, 2, d->u.declaration_stat.ident->name);
+        }
+
+        print_line(2, "FUNCN LEVEL", fd->ident->name);
+        print_table(tab);
     }
 
+    tab = table_new();
+    table_add_column(tab, "", TABLE_INT);      /* 1.id */
+    table_add_column(tab, "", TABLE_STRING);   /* 2.stat kind*/
+    table_add_column(tab, "", TABLE_STRING);   /* 3.expression kind */
+    table_add_column(tab, "", TABLE_STRING);   /* 4.expression basic type */
+    table_add_column(tab, "", TABLE_STRING);   /* 5.expression derive type */
+    table_add_column(tab, "", TABLE_STRING);   /* 6.left expression kind */
+    table_add_column(tab, "", TABLE_STRING);   /* 7.left expression basic type */
+    table_add_column(tab, "", TABLE_STRING);   /* 8.left expression derive type */
+    table_add_column(tab, "", TABLE_STRING);   /* 9.right expression kind */
+    table_add_column(tab, "", TABLE_STRING);   /* 10.right expression basic type */
+    table_add_column(tab, "", TABLE_STRING);   /* 11.right expression derive type */
+    id = 0;
+    for(stat = comp->statement_list->phead; stat; stat=stat->next) {
+        row = table_add_row(tab);
+        table_set_int(tab, row, 1, id ++);
+        table_set_string(tab, row, 2, stat_kinds[stat->kind]);
+        if(stat->kind == EXPRESSION_STATEMENT) {
+            table_set_string(tab, row, 3, exprkinds[stat->u.expr->kind]);
+            table_set_string(tab, row, 4, value_types[stat->u.expr->type->basic_type]);
+            if(stat->u.expr->type->derive_list_header_p != NULL) {
+                table_set_string(tab, row, 5, derive_types[stat->u.expr->type->derive_list_header_p->tag]);
+            }
+            switch (stat->u.expr->kind)
+            {
+            case NORMAL_ASSIGN_EXPRESSION:
+                table_set_string(tab, row, 6, exprkinds[stat->u.expr->binary_expr.left->kind]);
+                table_set_string(tab, row, 7, value_types[stat->u.expr->binary_expr.left->type->basic_type]);
+                if(stat->u.expr->binary_expr.left->type->derive_list_header_p != NULL) {
+                    table_set_string(tab, row, 8, derive_types[stat->u.expr->binary_expr.left->type->derive_list_header_p->tag]);
+                }
+                table_set_string(tab, row, 9, exprkinds[stat->u.expr->binary_expr.right->kind]);
+                table_set_string(tab, row, 10, value_types[stat->u.expr->binary_expr.right->type->basic_type]);
+                if(stat->u.expr->binary_expr.right->type->derive_list_header_p != NULL) {
+                    table_set_string(tab, row, 11, derive_types[stat->u.expr->binary_expr.right->type->derive_list_header_p->tag]);
+                }
+                break;
+            default:
+                break;
+            }
+        }
+    }
+    print_top_stat_table(tab);
+
+    tab = table_new();
+    table_add_column(tab, "", TABLE_INT);     /* id */
+    table_add_column(tab, "", TABLE_STRING);  /* basic_type  */
+    table_add_column(tab, "", TABLE_STRING);  /* derive_type */
+    table_add_column(tab, "", TABLE_STRING);  /* name */
+    table_add_column(tab, "", TABLE_STRING);  /* initializer kind */
+    table_add_column(tab, "", TABLE_STRING);  /* initializer basic_type */
+    table_add_column(tab, "", TABLE_STRING);  /* initializer derive_type */
+    id = 0;
+    for(stat = comp->declaration_stat_list->phead; stat; stat = stat->next) {
+        row = table_add_row(tab);
+        table_set_int(tab, row, 1, id ++);
+        table_set_string(tab, row, 2, value_types[stat->u.declaration_stat.type->basic_type]);
+        if(stat->u.declaration_stat.type->derive_list_header_p != NULL)
+            table_set_string(tab, row, 3, derive_types[stat->u.declaration_stat.type->derive_list_header_p->tag]);
+        table_set_string(tab, row, 4, stat->u.declaration_stat.ident->name);
+        if(stat->u.declaration_stat.initializer)
+        {
+            table_set_string(tab, row, 5, exprkinds[stat->u.declaration_stat.initializer->kind]);
+            table_set_string(tab, row, 6, value_types[stat->u.declaration_stat.type->basic_type]);
+            if(stat->u.declaration_stat.initializer->type->derive_list_header_p != NULL) {
+                table_set_string(tab, row, 7, derive_types[stat->u.declaration_stat.initializer->type->derive_list_header_p->tag]);
+            }
+        }
+    }
+
+    print_top_decl_table(tab);
+
     return;
+}
+
+void print_top_stat_table(table *tab) { /* col_num is 11. */
+    printf("%-20s\t", "@TOP STAT");
+    printf("%-20s\t", "@STAT KIND");
+    printf("%-20s\t", "@EXPR KIND");
+    printf("%-25s\t", "@EXPR BASIC TYPE");
+    printf("%-25s\t", "@EXPR DERIVE TYPE");
+    printf("%-25s\t", "@LEFT EXPR KIND");
+    printf("%-25s\t", "@LEFT EXPR BASIC TYPE");
+    printf("%-25s\t", "@LEFT EXPR DERIVE TYPE");
+    printf("%-25s\t", "@RIGHT EXPR KIND");
+    printf("%-25s\t", "@RIGHT EXPR BASIC TYPE");
+    printf("%-25s\t", "@RIGHT EXPR DERIVE TYPE");
+    printf("\n");
+    printf("%-20s\t", "-----------");
+    printf("%-20s\t", "-----------");
+    printf("%-20s\t", "-----------");
+    printf("%-25s\t", "---------------");
+    printf("%-25s\t", "---------------");
+    printf("%-25s\t", "---------------");
+    printf("%-25s\t", "---------------");
+    printf("%-25s\t", "---------------");
+    printf("%-25s\t", "---------------");
+    printf("%-25s\t", "---------------");
+    printf("%-25s\t", "---------------");
+    printf("\n");
+    /* print the table */
+    int row_num = table_get_row_num(tab);
+    int col_num = table_get_col_num(tab);
+    for(int row = 1; row <= row_num; row ++) { /* col_num is 6. */
+        char buf[200];
+        table_cell_to_buffer(tab, row, 1, buf, sizeof(buf));
+        printf("%-20s\t", buf);
+        table_cell_to_buffer(tab, row, 2, buf, sizeof(buf));
+        printf("%-20s\t", buf);
+        table_cell_to_buffer(tab, row, 3, buf, sizeof(buf));
+        printf("%-20s\t", buf);
+        table_cell_to_buffer(tab, row, 4, buf, sizeof(buf));
+        printf("%-25s\t", buf);
+        table_cell_to_buffer(tab, row, 5, buf, sizeof(buf));
+        printf("%-25s\t", buf);
+        table_cell_to_buffer(tab, row, 6, buf, sizeof(buf));
+        printf("%-25s\t", buf);
+        table_cell_to_buffer(tab, row, 7, buf, sizeof(buf));
+        printf("%-25s\t", buf);
+        table_cell_to_buffer(tab, row, 8, buf, sizeof(buf));
+        printf("%-25s\t", buf);
+        table_cell_to_buffer(tab, row, 9, buf, sizeof(buf));
+        printf("%-25s\t", buf);
+        table_cell_to_buffer(tab, row, 10, buf, sizeof(buf));
+        printf("%-25s\t", buf);
+        table_cell_to_buffer(tab, row, 11, buf, sizeof(buf));
+        printf("%-25s\t", buf);
+        printf("\n");
+        printf("%-20s\t", "-----------");
+        printf("%-20s\t", "-----------");
+        printf("%-20s\t", "-----------");
+        printf("%-25s\t", "---------------");
+        printf("%-25s\t", "---------------");
+        printf("%-25s\t", "---------------");
+        printf("%-25s\t", "---------------");
+        printf("%-25s\t", "---------------");
+        printf("%-25s\t", "---------------");
+        printf("%-25s\t", "---------------");
+        printf("%-25s\t", "---------------");
+        printf("\n");
+    }
+}
+
+void print_top_decl_table(table *tab) {
+    printf("%-20s\t", "@TOP DECL");
+    printf("%-20s\t", "@BASIC TYPE");
+    printf("%-20s\t", "@DERIVE TYPE");
+    printf("%-20s\t", "@Name");
+    printf("%-35s\t", "@INITIALIZER BASIC TYPE");
+    printf("%-35s\t", "@INITIALIZER DERIVE TYPE");
+    printf("\n");
+    printf("%-20s\t", "-----------");
+    printf("%-20s\t", "-----------");
+    printf("%-20s\t", "-----------");
+    printf("%-20s\t", "-----------");
+    printf("%-35s\t", "-------------------------");
+    printf("%-35s\t", "-------------------------");
+    printf("\n");
+    /* print the table */
+    int row_num = table_get_row_num(tab);
+    int col_num = table_get_col_num(tab);
+    for(int row = 1; row <= row_num; row ++) { /* col_num is 6. */
+        char buf[200];
+        table_cell_to_buffer(tab, row, 1, buf, sizeof(buf));
+        printf("%-20s\t", buf);
+        table_cell_to_buffer(tab, row, 2, buf, sizeof(buf));
+        printf("%-20s\t", buf);
+        table_cell_to_buffer(tab, row, 3, buf, sizeof(buf));
+        printf("%-20s\t", buf);
+        table_cell_to_buffer(tab, row, 4, buf, sizeof(buf));
+        printf("%-20s\t", buf);
+        table_cell_to_buffer(tab, row, 5, buf, sizeof(buf));
+        printf("%-35s\t", buf);
+        table_cell_to_buffer(tab, row, 6, buf, sizeof(buf));
+        printf("%-35s\t", buf);
+        printf("\n");
+        printf("%-20s\t", "-----------");
+        printf("%-20s\t", "-----------");
+        printf("%-20s\t", "-----------");
+        printf("%-20s\t", "-----------");
+        printf("%-35s\t", "-------------------------");
+        printf("%-35s\t", "-------------------------");
+        printf("\n");
+    }
 }

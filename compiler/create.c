@@ -504,6 +504,120 @@ TypeSpecifier* create_typespecifier(ValueType typ) {
 
     ts = (TypeSpecifier*)Malloc(sizeof(TypeSpecifier));
     ts->basic_type = typ;
+    ts->derive_list_header_p = NULL;
 
     return ts;
+}
+
+TypeSpecifier* create_array_typespecifier(TypeSpecifier *ts) {
+    TypeDerive *td;
+    TypeDerive *pos;
+
+    td = (TypeDerive*)Malloc(sizeof(TypeDerive));
+    td->tag = ARRAY_DERIVE;
+    td->next = 0;
+    if(ts->derive_list_header_p == NULL) {
+        ts->derive_list_header_p = td;
+    } else {
+        for(pos=ts->derive_list_header_p; pos->next; pos=pos->next)
+            ;
+        pos->next = td;
+    }
+
+    return ts;
+}
+
+Expression* create_index_expression(Expression *array, Expression *index) {
+    Expression *expr;
+
+    expr = (Expression*)Malloc(sizeof(Expression));
+    expr->kind = INDEX_EXPRESSION;
+    expr->index_expr.array = array;
+    expr->index_expr.index = index;
+    
+    return expr;
+}
+
+Expression* create_array_literal_expression(ExpressionListNode *elist) {
+    Expression *expr;
+
+    expr = (Expression*)Malloc(sizeof(Expression));
+    expr->kind = ARRAY_LITERAL_EXPRESSION;
+    expr->array_literal_expr = elist;
+
+    return expr;
+}
+
+Expression* create_array_creation_expression(ValueType basic_type, 
+    ExpressionListNode *expr_list, ExpressionListNode *empty_expr_list)
+{
+    Expression *expr;
+    ExpressionListNode *pos;
+
+    expr = (Expression*)Malloc(sizeof(Expression));
+    expr->kind = ARRAY_CREATION_EXPRESSION;
+    expr->array_creation_expr.basic_type = basic_type;
+    for(pos=expr_list; pos->next; pos=pos->next) 
+        ;
+    pos->next = empty_expr_list;
+    expr->array_creation_expr.dimension_list_header_p = expr_list;
+
+    return expr;
+}
+
+ExpressionListNode* create_expression_list(Expression *expr) {
+    ExpressionListNode *enode;
+    
+    enode = (ExpressionListNode*)Malloc(sizeof(ExpressionListNode));
+    enode->expr = expr;
+    enode->next = NULL;
+
+    return enode;
+}
+
+ExpressionListNode* chain_expression_list(Expression *expr, ExpressionListNode *elist) {
+    ExpressionListNode *new_enode;
+    ExpressionListNode *pos;
+
+    new_enode = (ExpressionListNode*)Malloc(sizeof(ExpressionListNode));
+    new_enode->expr = expr;
+    new_enode->next = NULL;
+    for(pos = elist; pos->next; pos = pos->next)
+        ;
+    pos->next = new_enode;
+
+    return elist;
+}
+
+ExpressionListNode* create_array_dimension(Expression *expr) {
+    ExpressionListNode *array_dimension_list;
+
+    array_dimension_list = (ExpressionListNode*)Malloc(sizeof(ExpressionListNode));
+    array_dimension_list->expr = expr;
+    array_dimension_list->next = NULL;
+
+    return array_dimension_list;
+}
+
+ExpressionListNode* chain_array_dimension(Expression *expr, ExpressionListNode *array_dimension_list) {
+    ExpressionListNode *new_array_dimension;
+    ExpressionListNode *pos;
+
+    new_array_dimension = (ExpressionListNode*)Malloc(sizeof(ExpressionListNode));
+    new_array_dimension->expr = expr;
+    new_array_dimension->next = NULL;
+    for(pos=array_dimension_list; pos->next; pos=pos->next)
+        ;
+    pos->next = new_array_dimension;
+
+    return array_dimension_list;
+}
+
+Expression *create_null_expression() {
+    Expression *expr;
+
+    expr = (Expression*)Malloc(sizeof(Expression));
+    expr->kind = NULL_EXPRESSION;
+
+    return expr;
 }

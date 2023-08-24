@@ -71,7 +71,11 @@ typedef enum {
     INT_LITERAL_EXPRESSION,
     DOUBLE_LITERAL_EXPRESSION,
     STRING_LITERAL_EXPRESSION,
-    CAST_EXPRESSION
+    CAST_EXPRESSION,
+    ARRAY_LITERAL_EXPRESSION,
+    ARRAY_CREATION_EXPRESSION,
+    INDEX_EXPRESSION,
+    NULL_EXPRESSION,
 } ExpressionKind;
 
 typedef enum {
@@ -122,6 +126,7 @@ typedef struct StatementList StatementList;
 typedef struct FunctionList FunctionList;
 typedef struct ForeachStatement ForeachStatement;
 typedef struct BackPackPoint BackPackPoint;
+typedef struct ExpressionListNode     ExpressionListNode;
 /* stack.c */
 typedef struct Stack Stack;
 
@@ -149,6 +154,11 @@ struct ArgumentList {
     Argument *phead;
 };
 
+struct ExpressionListNode {
+    Expression          *expr;
+    ExpressionListNode  *next;
+};
+
 struct Expression {
     TypeSpecifier    *type;
     ExpressionKind   kind;
@@ -172,6 +182,15 @@ struct Expression {
             CastType   type;
             Expression *casted_expr;
         }  cast_expr;
+        struct {
+            Expression *array;
+            Expression *index;
+        } index_expr;
+        struct {
+            ValueType           basic_type;
+            ExpressionListNode  *dimension_list_header_p;
+        } array_creation_expr;
+        ExpressionListNode *array_literal_expr; /* array literal expression is a list of expression. */
     };
 };
 
@@ -202,7 +221,7 @@ struct FunctionDefinition {
     Identifier            *ident;
     ParameterList         *param_list;
     Block                 *block;
-    Statement             **local_variables;
+    Statement             **local_variables; /* parameter + block variable */
     int                   local_variable_cnt;
     int                   index; /* set in create_function_definition() */
     FunctionDefinition    *next;
@@ -391,6 +410,17 @@ Statement* create_declaration_statement(TypeSpecifier *ts, Identifier *ident, Ex
 Block* open_block();
 Block* close_block(Block *block);
 TypeSpecifier* create_typespecifier(ValueType typ);
+TypeSpecifier* create_array_typespecifier(TypeSpecifier *ts);
+Expression* create_index_expression(Expression *array, Expression *index);
+Expression* create_array_literal_expression(ExpressionListNode *elist);
+Expression* create_array_creation_expression(ValueType basic_type, 
+    ExpressionListNode *expr_list, ExpressionListNode *empty_expr_list);
+ExpressionListNode* create_expression_list(Expression *expr);
+ExpressionListNode* chain_expression_list(Expression *expr, ExpressionListNode *elist);
+ExpressionListNode* create_array_dimension(Expression *expr);
+ExpressionListNode* chain_array_dimension(Expression *expr, 
+    ExpressionListNode *array_dimension_list);
+Expression *create_null_expression();
 
 /* common.c */
 void set_current_compiler(Compiler *comp);

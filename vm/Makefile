@@ -1,8 +1,8 @@
 TARGET = vm.o
 CC=gcc
-CFLAGS = -c -g -Wall -Wswitch-enum -std=c11 -pedantic -DDEBUG
-OBJS = execute.o
-
+CFLAGS = -c -g -Wall -std=c11 -pedantic -DDEBUG -Wno-sequence-point -Wswitch-enum 
+OBJS = execute.o \
+	   native.o \
 
 $(TARGET):$(OBJS)
 	ld -r -o $@ $(OBJS)
@@ -11,5 +11,5 @@ clean:
 .c.o:
 	$(CC) $(CFLAGS) -I../include $*.c
 
-execute.o: execute.c
-
+execute.o: execute.c decls.h
+native.o: native.c decls.h

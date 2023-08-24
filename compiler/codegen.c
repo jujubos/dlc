@@ -10,6 +10,7 @@
 extern OpcodeInfo opcode_info[];
 
 static void walk_statement_list(StatementList *stat_list, Executable *exe);
+static void gen_code_of_expression(Expression *expr, Executable *exe);
 
 static 
 struct {
@@ -68,6 +69,8 @@ int emit(OpCodeTag opcode, ...) {
     case 'p':
         operand_sz = 2;
         break;
+    case 'a':
+        operand_sz = 3;
     default:
         break;
     }
@@ -91,6 +94,12 @@ int emit(OpCodeTag opcode, ...) {
         case 'd':   /* Fallthrough */ 
         case 's':   /* Fallthrough */
         case 'p':
+            codebuf.codes[codebuf.size ++] = (Byte)(operand >> 8 & 0xff);
+            codebuf.codes[codebuf.size ++] = (Byte)(operand & 0xff);
+            break;
+        case 'a':
+            codebuf.codes[codebuf.size ++] = (Byte)(operand & 0xff);
+            operand = va_arg(args, int); /* 'a' means two operands. */
             codebuf.codes[codebuf.size ++] = (Byte)(operand >> 8 & 0xff);
             codebuf.codes[codebuf.size ++] = (Byte)(operand & 0xff);
             break;
@@ -129,9 +138,9 @@ int add_constant_to_pool(Constant *cons, Executable *exe) {
     return exe->constant_seg->size - 1;
 }
 
-static int
-type_offset(ValueType basic_type)
-{
+static
+int basictype_offset(ValueType basic_type) {
+
     switch (basic_type) {
     case BOOLEAN_TYPE:
         return 0;
@@ -145,6 +154,37 @@ type_offset(ValueType basic_type)
     case STRING_TYPE:
         return 2;
         break;
+    case NULL_TYPE:
+    case UNDETERMIEND:
+    default:
+        break;
+    }
+
+    return 0;
+}
+
+/* For code convenience. */
+static 
+int type_offset(TypeSpecifier *ts)
+{
+    if(ts->derive_list_header_p != NULL) {
+        return 2;
+    }
+
+    switch (ts->basic_type) {
+    case BOOLEAN_TYPE:
+        return 0;
+        break;
+    case INT_TYPE:
+        return 0;
+        break;
+    case DOUBLE_TYPE:
+        return 1;
+        break;
+    case STRING_TYPE:
+        return 2;
+        break;
+    case NULL_TYPE:
     case UNDETERMIEND:
     default:
         break;
@@ -156,34 +196,52 @@ type_offset(ValueType basic_type)
 static 
 void pop_to_identifier(Identifier *ident) {
     int is_local;
-    ValueType basic_type;
+    TypeSpecifier *type;
     int index;
     is_local = ident->decl->u.declaration_stat.is_local;
-    basic_type = ident->decl->u.declaration_stat.type->basic_type;
+    type = ident->decl->u.declaration_stat.type;
     index = ident->decl->u.declaration_stat.index;
     if(is_local) {
-        emit(POP_STACK_INT + type_offset(basic_type), index);
+        emit(POP_STACK_INT + type_offset(type), index);
     } else {
-        emit(POP_STATIC_INT + type_offset(basic_type), index);
+        emit(POP_STATIC_INT + type_offset(type), index);
+    }
+}
+
+static
+void pop_to_index_expression(Expression *expr) {
+    emit(POP_ARRAY_INT + type_offset(expr->type));
+}
+
+static 
+void pop_to_lvalue(Expression *lvalue) {
+    if(lvalue->kind == IDENTIFIER_EXPRESSION) {
+        pop_to_identifier(lvalue->ident);
+    } else if(lvalue->kind == INDEX_EXPRESSION) {
+        pop_to_index_expression(lvalue);
+    } else {
+        printf("pop_to_lvalue:not lvalue\n");
+        exit(1);
     }
 }
 
 void gen_code_of_identifier_expression(Expression *expr) {
-    Statement *stat = expr->ident->decl;
 
     if(expr->ident->is_func) {
         emit(PUSH_FUNCTION, expr->ident->func_def->index);
         return;
     }
 
+    Statement *stat = expr->ident->decl;
     if(stat->u.declaration_stat.is_local) {
-        emit(PUSH_STACK_INT + type_offset(expr->type->basic_type), stat->u.declaration_stat.index);
+        emit(PUSH_STACK_INT + type_offset(expr->type), stat->u.declaration_stat.index);
     } else {
-        emit(PUSH_STATIC_INT + type_offset(expr->type->basic_type), stat->u.declaration_stat.index);
+        emit(PUSH_STATIC_INT + type_offset(expr->type), stat->u.declaration_stat.index);
     }
 }
 
 void gen_code_of_cast_expression(Expression *expr, Executable *exe) {
+    gen_code_of_expression(expr->cast_expr.casted_expr, exe);
     switch (expr->cast_expr.type)
     {
     case INT_TO_DOUBLE:
@@ -224,97 +282,121 @@ void gen_code_of_expression(Expression *expr, Executable *exe) {
     case NORMAL_ASSIGN_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.right, exe);
         emit(DUPLICATE);
-        pop_to_identifier(expr->binary_expr.left->ident);
+        if(expr->binary_expr.left->kind == INDEX_EXPRESSION) {
+            gen_code_of_expression(expr->binary_expr.left->index_expr.array, exe);
+            gen_code_of_expression(expr->binary_expr.left->index_expr.index, exe);
+        }
+        pop_to_lvalue(expr->binary_expr.left);
         break;
     case ADD_ASSIGN_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.left, exe);
         gen_code_of_expression(expr->binary_expr.right, exe);
-        emit(ADD_INT + type_offset(expr->type->basic_type));
+        emit(ADD_INT + type_offset(expr->type));
         emit(DUPLICATE);
-        pop_to_identifier(expr->binary_expr.left->ident);
+        if(expr->binary_expr.left->kind == INDEX_EXPRESSION) {
+            gen_code_of_expression(expr->binary_expr.left->index_expr.array, exe);
+            gen_code_of_expression(expr->binary_expr.left->index_expr.index, exe);
+        }
+        pop_to_lvalue(expr->binary_expr.left);
         break;
     case SUB_ASSIGN_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.left, exe);
         gen_code_of_expression(expr->binary_expr.right, exe);
-        emit(SUB_INT + type_offset(expr->type->basic_type));
+        emit(SUB_INT + type_offset(expr->type));
         emit(DUPLICATE);
-        pop_to_identifier(expr->binary_expr.left->ident);
+        if(expr->binary_expr.left->kind == INDEX_EXPRESSION) {
+            gen_code_of_expression(expr->binary_expr.left->index_expr.array, exe);
+            gen_code_of_expression(expr->binary_expr.left->index_expr.index, exe);
+        }
+        pop_to_lvalue(expr->binary_expr.left);
         break;
     case MUL_ASSIGN_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.left, exe);
         gen_code_of_expression(expr->binary_expr.right, exe);
-        emit(MUL_INT + type_offset(expr->type->basic_type));
+        emit(MUL_INT + type_offset(expr->type));
         emit(DUPLICATE);
-        pop_to_identifier(expr->binary_expr.left->ident);
+        if(expr->binary_expr.left->kind == INDEX_EXPRESSION) {
+            gen_code_of_expression(expr->binary_expr.left->index_expr.array, exe);
+            gen_code_of_expression(expr->binary_expr.left->index_expr.index, exe);
+        }
+        pop_to_lvalue(expr->binary_expr.left);
         break;
     case DIV_ASSIGN_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.left, exe);
         gen_code_of_expression(expr->binary_expr.right, exe);
-        emit(DIV_INT + type_offset(expr->type->basic_type));
+        emit(DIV_INT + type_offset(expr->type));
         emit(DUPLICATE);
-        pop_to_identifier(expr->binary_expr.left->ident);
+        if(expr->binary_expr.left->kind == INDEX_EXPRESSION) {
+            gen_code_of_expression(expr->binary_expr.left->index_expr.array, exe);
+            gen_code_of_expression(expr->binary_expr.left->index_expr.index, exe);
+        }
+        pop_to_lvalue(expr->binary_expr.left);
         break;
     case MOD_ASSIGN_EXPRESSION: 
         gen_code_of_expression(expr->binary_expr.left, exe);
         gen_code_of_expression(expr->binary_expr.right, exe);
-        emit(MOD_INT + type_offset(expr->type->basic_type));
+        emit(MOD_INT + type_offset(expr->type));
         emit(DUPLICATE);
-        pop_to_identifier(expr->binary_expr.left->ident);
+        if(expr->binary_expr.left->kind == INDEX_EXPRESSION) {
+            gen_code_of_expression(expr->binary_expr.left->index_expr.array, exe);
+            gen_code_of_expression(expr->binary_expr.left->index_expr.index, exe);
+        }
+        pop_to_lvalue(expr->binary_expr.left);
         break;        
     case ARITH_ADDITIVE_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.left, exe);
         gen_code_of_expression(expr->binary_expr.right, exe);
-        emit(ADD_INT + type_offset(expr->type->basic_type));
+        emit(ADD_INT + type_offset(expr->type));
         break;
     case ARITH_SUBSTRACTION_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.left, exe);
         gen_code_of_expression(expr->binary_expr.right, exe);
-        emit(SUB_INT + type_offset(expr->type->basic_type));
+        emit(SUB_INT + type_offset(expr->type));
         break;
     case ARITH_MULTIPLICATION_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.left, exe);
         gen_code_of_expression(expr->binary_expr.right, exe);
-        emit(MUL_INT + type_offset(expr->type->basic_type));
+        emit(MUL_INT + type_offset(expr->type));
         break;
     case ARITH_DIVISION_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.left, exe);
         gen_code_of_expression(expr->binary_expr.right, exe);
-        emit(DIV_INT + type_offset(expr->type->basic_type));
+        emit(DIV_INT + type_offset(expr->type));
         break;
     case ARITH_MODULO_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.left, exe);
         gen_code_of_expression(expr->binary_expr.right, exe);
-        emit(MOD_INT + type_offset(expr->type->basic_type));
+        emit(MOD_INT + type_offset(expr->type));
         break;    
     case RELATION_EQ_EXPRESSION: 
         gen_code_of_expression(expr->binary_expr.left, exe);
         gen_code_of_expression(expr->binary_expr.right, exe);
-        emit(EQ_INT + type_offset(expr->type->basic_type));
+        emit(EQ_INT + type_offset(expr->type));
         break;        
     case RELATION_NE_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.left, exe);
         gen_code_of_expression(expr->binary_expr.right, exe);
-        emit(NE_INT + type_offset(expr->type->basic_type));
+        emit(NE_INT + type_offset(expr->type));
         break;
     case RELATION_GT_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.left, exe);
         gen_code_of_expression(expr->binary_expr.right, exe);
-        emit(GT_INT + type_offset(expr->type->basic_type));
+        emit(GT_INT + type_offset(expr->type));
         break;
     case RELATION_LT_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.left, exe);
         gen_code_of_expression(expr->binary_expr.right, exe);
-        emit(LT_INT + type_offset(expr->type->basic_type));
+        emit(LT_INT + type_offset(expr->type));
         break;
     case RELATION_GE_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.left, exe);
         gen_code_of_expression(expr->binary_expr.right, exe);
-        emit(GE_INT + type_offset(expr->type->basic_type));
+        emit(GE_INT + type_offset(expr->type));
         break;
     case RELATION_LE_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.left, exe);
         gen_code_of_expression(expr->binary_expr.right, exe);
-        emit(LE_INT + type_offset(expr->type->basic_type));
+        emit(LE_INT + type_offset(expr->type));
         break;
     case LOGICAL_AND_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.left, exe);
@@ -330,7 +412,7 @@ void gen_code_of_expression(Expression *expr, Executable *exe) {
         backpack_i = emit(JUMP_IF_TRUE, 0);
         gen_code_of_expression(expr->binary_expr.right, exe);
         emit(LOGICAL_OR_OP);
-        backpack(backpack_i, codebuf.size);
+        backpack(backpack_i, get_pc());
         break;
     case LOGICAL_NOT_EXPRESSION:
         gen_code_of_expression(expr->unary_operand, exe);
@@ -338,7 +420,7 @@ void gen_code_of_expression(Expression *expr, Executable *exe) {
         break;
     case MINUS_EXPRESSION:
         gen_code_of_expression(expr->unary_operand, exe);
-        emit(MINUS_INT  + type_offset(expr->type->basic_type));
+        emit(MINUS_INT  + type_offset(expr->type));
         break;
     case FUNC_CALL_EXPRESSION:
         if(expr->function_call_expr.arg_list != NULL) {
@@ -352,6 +434,44 @@ void gen_code_of_expression(Expression *expr, Executable *exe) {
     case IDENTIFIER_EXPRESSION:
         gen_code_of_identifier_expression(expr);
         break;
+    case ARRAY_LITERAL_EXPRESSION:
+    {
+        ExpressionListNode *enode;
+        int i = 0;
+        for(enode=expr->array_literal_expr; enode; enode=enode->next) {
+            gen_code_of_expression(enode->expr, exe);
+            i ++;
+        }
+        if(expr->type->derive_list_header_p->next != NULL) {
+            emit(NEW_ARRAY_LITERAL_OBJECT, i);
+        } else {
+            emit(NEW_ARRAY_LITERAL_INT + basictype_offset(expr->type->basic_type), i);
+        }
+        break;
+    }
+    case ARRAY_CREATION_EXPRESSION:
+    {
+        ExpressionListNode *enode;
+        int typ_idx = expr->array_creation_expr.basic_type;
+        int dim_cnt = 0;
+        for(enode=expr->array_creation_expr.dimension_list_header_p; enode; enode=enode->next) {
+            gen_code_of_expression(enode->expr, exe);
+            dim_cnt ++;
+        }
+        emit(NEW_ARRAY_OP, dim_cnt, typ_idx);
+        break;
+    }
+    case INDEX_EXPRESSION:
+    {
+        gen_code_of_expression(expr->index_expr.array, exe);
+        gen_code_of_expression(expr->index_expr.index, exe);
+        if(expr->index_expr.array->type->derive_list_header_p->next == NULL) {
+            emit(PUSH_ARRAY_INT + basictype_offset(expr->index_expr.array->type->basic_type));
+        } else {
+            emit(PUSH_ARRAY_OBJECT);
+        }
+        break;
+    }
     case COMMA_EXPRESSION:
         gen_code_of_expression(expr->binary_expr.left, exe);
         emit(POP_OP);
@@ -362,14 +482,20 @@ void gen_code_of_expression(Expression *expr, Executable *exe) {
         emit(DUPLICATE);
         emit(PUSH_INT_1BYTE, 1);
         emit(ADD_INT);
-        pop_to_identifier(expr->unary_operand->ident);
+        if(expr->unary_operand->kind == INDEX_EXPRESSION) {
+            gen_code_of_expression(expr->unary_operand, exe);
+        }
+        pop_to_lvalue(expr->unary_operand);
         break;
     case POST_DECREMENT_EXPRESSION:
         gen_code_of_expression(expr->unary_operand, exe);
         emit(DUPLICATE);
         emit(PUSH_INT_1BYTE, 1);
         emit(SUB_INT);
-        pop_to_identifier(expr->unary_operand->ident); 
+        if(expr->unary_operand->kind == INDEX_EXPRESSION) {
+            gen_code_of_expression(expr->unary_operand, exe);
+        }
+        pop_to_lvalue(expr->unary_operand);
         break;
     case CAST_EXPRESSION:
         gen_code_of_cast_expression(expr, exe);
@@ -453,12 +579,17 @@ void walk_statement_list(StatementList *stat_list, Executable *exe) {
         {
             BackPackPoint *bp;
 
+            /* init */
             gen_code_of_expression(stat->u.for_stat.init_expr, exe);
             emit(POP_OP);
+            /* cond */
             stat->u.for_stat.continue_pc = get_pc();
             gen_code_of_expression(stat->u.for_stat.cond_expr, exe);
             backpack_i = emit(JUMP_IF_FALSE, 0);
+            /* block */
             walk_block(stat->u.for_stat.block, exe);
+            /* post */
+            gen_code_of_expression(stat->u.for_stat.post_expr, exe);
             emit(JUMP, stat->u.for_stat.continue_pc);
 
             backpack(backpack_i, get_pc());
@@ -629,6 +760,9 @@ void copy_function_definition(FunctionDefinition *fd, Function *f) {
             f->paras[i].name = para->ident->name;
             f->paras[i].type = para->type;
         }
+    } else {
+        f->para_cnt = 0;
+        f->paras = NULL;
     }
 
     /* copy local variables info */
@@ -700,7 +834,7 @@ void gen_code_segment(Executable *exe) {
             // f->line_numbers = linenum_buf.arr;
             // f->line_number_size = linenum_buf.size;
         } else {
-
+            f->is_implemented = 0;
         }
     }
 }
@@ -782,3 +916,10 @@ Executable* walk_ast_for_gen_exe() {
     
     return exe;
 }
+
+/*  The core idea is [walk_statement_list()] and [gen_code_of_expression()]. 
+    We stand at the statement level[walk_statement_list()]. 
+    We just consider how generate code for each kind of statement(EXPRESSION_STATEMENT, IF_STATEMENT ...)[gen_code_of_expression()].
+    So we walk each statement[walk_statement_list()], and generate correct code for the statement we walk to.
+    For example, if we walk to expression statement, we just need to generate code for it's(the statement) expression[gen_code_of_expression()].
+*/

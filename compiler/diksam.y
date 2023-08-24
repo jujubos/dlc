@@ -11,7 +11,11 @@
     Statement           *statement;
     Block               *block;
     Elif                *elif;
+    ValueType           basic_type;    
     TypeSpecifier       *type_specifier;
+    ExpressionListNode  *dimension_list;
+    ExpressionListNode  *expression_list;
+    ExpressionListNode  *dimension_expression_list;
 }
 %token <expression>     INT_LITERAL
 %token <expression>     DOUBLE_LITERAL
@@ -23,14 +27,14 @@
         EQ NE GT GE LT LE ADD SUB MUL DIV MOD TRUE_T FALSE_T EXCLAMATION DOT
         ADD_ASSIGN_T SUB_ASSIGN_T MUL_ASSIGN_T DIV_ASSIGN_T MOD_ASSIGN_T
         INCREMENT DECREMENT TRY CATCH FINALLY THROW
-        BOOLEAN_T INT_T DOUBLE_T STRING_T
+        BOOLEAN_T INT_T DOUBLE_T STRING_T LB RB NULL_T NEW
 %type   <parameter_list> parameter_list
 %type   <argument_list> argument_list
 %type   <expression> expression expression_opt
         assignment_expression logical_and_expression logical_or_expression
         equality_expression relational_expression
         additive_expression multiplicative_expression
-        unary_expression postfix_expression primary_expression
+        unary_expression primary_expression primary_no_new_array array_literal array_creation
 %type   <statement> statement
         if_statement while_statement for_statement foreach_statement
         return_statement break_statement continue_statement try_statement
@@ -38,7 +42,11 @@
 %type   <block> block
 %type   <elif> elif elif_list
 %type   <identifier> identifier_opt label_opt
+%type   <basic_type>  basic_type_specifier
 %type   <type_specifier> type_specifier
+%type   <dimension_list> dimension_list
+%type   <expression_list> expression_list
+%type   <dimension_expression_list> dimension_expression_list
 %%
 translation_unit
         : definition_or_statement
@@ -51,23 +59,27 @@ definition_or_statement
             chain_top_level_statement($1);
         }
         ;
-type_specifier
+basic_type_specifier
         : BOOLEAN_T
         {
-            $$ = create_typespecifier(BOOLEAN_TYPE);
+            $$ = BOOLEAN_TYPE;
         }
         | INT_T
         {
-            $$ = create_typespecifier(INT_TYPE);
+            $$ = INT_TYPE;
         }
         | DOUBLE_T
         {
-            $$ = create_typespecifier(DOUBLE_TYPE);
+            $$ = DOUBLE_TYPE;
         }
         | STRING_T
         {
-            $$ = create_typespecifier(STRING_TYPE);
+            $$ = STRING_TYPE;
         }
+        ;
+type_specifier
+        : basic_type_specifier { $$ = create_typespecifier($1); }
+        | type_specifier LB RB { $$ = create_array_typespecifier($1); }
         ;
 function_definition
         : type_specifier IDENTIFIER LP parameter_list RP block
@@ -128,27 +140,27 @@ expression
         ;
 assignment_expression
         : logical_or_expression
-        | postfix_expression ASSIGN_T assignment_expression
+        | primary_expression ASSIGN_T assignment_expression
         {
             $$ = create_binary_expression(NORMAL_ASSIGN_EXPRESSION, $1, $3);
         }
-        | postfix_expression ADD_ASSIGN_T assignment_expression
+        | primary_expression ADD_ASSIGN_T assignment_expression
         {
             $$ = create_binary_expression(ADD_ASSIGN_EXPRESSION, $1, $3);
         }
-        | postfix_expression SUB_ASSIGN_T assignment_expression
+        | primary_expression SUB_ASSIGN_T assignment_expression
         {
             $$ = create_binary_expression(SUB_ASSIGN_EXPRESSION, $1, $3);
         }
-        | postfix_expression MUL_ASSIGN_T assignment_expression
+        | primary_expression MUL_ASSIGN_T assignment_expression
         {
             $$ = create_binary_expression(MUL_ASSIGN_EXPRESSION, $1, $3);
         }
-        | postfix_expression DIV_ASSIGN_T assignment_expression
+        | primary_expression DIV_ASSIGN_T assignment_expression
         {
             $$ = create_binary_expression(DIV_ASSIGN_EXPRESSION, $1, $3);
         }
-        | postfix_expression MOD_ASSIGN_T assignment_expression
+        | primary_expression MOD_ASSIGN_T assignment_expression
         {
             $$ = create_binary_expression(MOD_ASSIGN_EXPRESSION, $1, $3);
         }
@@ -224,7 +236,7 @@ multiplicative_expression
         }
         ;
 unary_expression
-        : postfix_expression
+        : primary_expression
         | SUB unary_expression
         {
             $$ = create_minus_expression($2);
@@ -234,27 +246,32 @@ unary_expression
             $$ = create_logical_not_expression($2);
         }
         ;
-postfix_expression
-        : primary_expression
-        | postfix_expression LP argument_list RP
+primary_expression
+        : primary_no_new_array
+        | array_creation
+        ;
+primary_no_new_array
+        : primary_no_new_array LB expression RB
+        {
+            $$ = create_index_expression($1, $3);
+        }
+        | primary_no_new_array LP argument_list RP
         {
             $$ = create_function_call_expression($1, $3);
         }
-        | postfix_expression LP RP
+        | primary_no_new_array LP RP
         {
             $$ = create_function_call_expression($1, NULL);
         }
-        | postfix_expression INCREMENT
+        | primary_no_new_array INCREMENT
         {
             $$ = create_incdec_expression(POST_INCREMENT_EXPRESSION, $1);
         }
-        | postfix_expression DECREMENT
+        | primary_no_new_array DECREMENT
         {
             $$ = create_incdec_expression(POST_DECREMENT_EXPRESSION, $1);
         }
-        ;
-primary_expression
-        : LP expression RP
+        | LP expression RP
         {
             $$ = $2;
         }
@@ -266,14 +283,30 @@ primary_expression
         | DOUBLE_LITERAL
         | STRING_LITERAL
         | REGEXP_LITERAL
-        | TRUE_T
-        {
-            $$ = create_boolean_expression(TRUE);
-        }
-        | FALSE_T
-        {
-            $$ = create_boolean_expression(FALSE);
-        }
+        | TRUE_T  { $$ = create_boolean_expression(TRUE); }
+        | FALSE_T { $$ = create_boolean_expression(FALSE); }
+        | NULL_T  { $$ = create_null_expression(NULL_T); }
+        | array_literal
+        ;
+array_literal
+        : LC expression_list RC { $$ = create_array_literal_expression($2); }
+        | LC expression_list COMMA RC { $$ = create_array_literal_expression($2); }
+        ;
+array_creation
+        : NEW basic_type_specifier dimension_expression_list { $$ = create_array_creation_expression($2, $3, NULL); }
+        | NEW basic_type_specifier dimension_expression_list dimension_list { $$ = create_array_creation_expression($2, $3, $4); }
+        ;
+dimension_expression_list
+        : LB expression RB { $$ = create_array_dimension($2); }
+        | dimension_expression_list LB expression RB { $$ = chain_array_dimension($3, $1); }
+dimension_list
+        : LB RB { $$ = create_array_dimension(NULL); }
+        | dimension_list LB RB { $$ = chain_array_dimension(NULL, $1); }
+        ;
+expression_list
+        : /* empty */
+        | assignment_expression   { $$ = create_expression_list($1); }
+        | expression_list COMMA assignment_expression { $$ = chain_expression_list($3, $1); }
         ;
 statement
         : expression SEMICOLON

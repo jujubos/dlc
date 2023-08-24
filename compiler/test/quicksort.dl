@@ -1,0 +1,48 @@
+// Top Level Statements
+int[] a = {5,27,34,28,44,44,38,22,3,30,41,32,20,8,1,19,35,36,41,17};
+print_arr(a);
+quick_sort(0, size_arr(a) - 1);
+print_arr(a);
+
+// Native Function Declarations
+int print(string str);
+int size_arr(int[] arr);
+
+// User Function Definitions
+int println(string str) {
+    print(str + "\n");
+}
+
+int quick_sort(int l, int r) {
+    if(l >= r) {
+        return 0;
+    }
+    int x = a[ (l + r) / 2 ];
+    int i = l - 1;
+    int j = r + 1;
+    int t;
+    while(i < j) {
+        i ++;  while(a[i] < x) { i ++; }
+        j --;  while(a[j] > x) { j --; }
+        if(i < j) {
+            t = a[i];
+            a[i] = a[j];
+            a[j] = t;
+        }
+    }
+    quick_sort(l, j);
+    quick_sort(j + 1, r);
+    
+    return 0;
+}
+
+int print_arr(int [] arr) {
+    int i;
+
+    for(i = 0; i < size_arr(arr); i ++) {
+        print(arr[i] + " ");
+    }
+    print("\n");
+
+    return 0;
+}

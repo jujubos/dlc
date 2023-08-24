@@ -22,11 +22,12 @@ int main(int argc, char **argv) {
     Executable *exe =  compile(compiler, fp);
     init_virtual_machine();
     load_executable_file(exe);
-    VirtualMachine* vm = get_virtual_machine();
-    disassemble_exe(exe);
-    // disassemble_ast(compiler);
+    // VirtualMachine* vm = get_virtual_machine();
     // disassemble_exe(exe);
+    Execute();
 
+    // disassemble_ast(compiler);
     // free_compiler(compile);
+
     return 0;
 }

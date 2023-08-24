@@ -16,6 +16,16 @@ CastType cast_A_to_B[5][5] = {
     {0,10,11,12,0}
 };
 
+TypeDerive *alloc_typederive(DeriveTag tag) {
+    TypeDerive *td;
+
+    td = (TypeDerive*)Malloc(sizeof(TypeDerive));
+    td->tag = tag;
+    td->next = NULL;
+
+    return td;
+}
+
 int is_expr_type(Expression *expr, ValueType typ) {
     return (expr->type->basic_type) == (typ);
 }
@@ -174,6 +184,11 @@ int is_type_equal(TypeSpecifier *left, TypeSpecifier *right) {
     return left->basic_type == right->basic_type;
 }
 
+/*
+    1.Check if operands of expression satisfy the semantics of the expression.
+    2.If not, check if it can be casted to satisfy it.
+    3.If satisfied, set type of the expression properly.
+*/
 void type_check_and_cast(Expression *expr) {
     switch (expr->kind)
     {
@@ -267,6 +282,8 @@ void type_check_and_cast(Expression *expr) {
         expr->type = expr->unary_operand->type;
         break;
     case FUNC_CALL_EXPRESSION:
+    {
+        /* typecheck function callee */
         if(expr->function_call_expr.callee->kind != IDENTIFIER_EXPRESSION) {
             printf("type_check_and_cast:FUNC_CALL_EXPRESSION,callee not identifier\n");
             exit(1);
@@ -275,8 +292,25 @@ void type_check_and_cast(Expression *expr) {
             printf("type_check_and_cast:FUNC_CALL_EXPRESSION,function not found\n");
             exit(1);
         }
-        expr->type = expr->function_call_expr.callee->ident->func_def->type;
+        /* typecheck arguements */
+        FunctionDefinition *f = expr->function_call_expr.callee->ident->func_def;
+        Argument *arg = expr->function_call_expr.arg_list->phead;
+        Parameter *para = f->param_list->phead;
+        while(arg != NULL || para != NULL) {
+            if(arg == NULL || para == NULL) {
+                printf("typecheck:FUNC_CALL_EXPRESSION,arg number not match para number.\n");
+                exit(1);
+            }
+            if(!is_type_equal(arg->expr->type, para->type)) {
+                printf("typecheck:FUNC_CALL_EXPRESSION,arg not match para.\n");
+                exit(1);
+            }
+            arg = arg->next;
+            para = para->next;
+        }
+        expr->type = f->type;
         break;
+    }
     case IDENTIFIER_EXPRESSION:
         if(!fill_identifier(expr->ident)) {
             printf("identifier not found:%s\n", expr->ident->name);
@@ -288,6 +322,54 @@ void type_check_and_cast(Expression *expr) {
             expr->type = expr->ident->decl->u.declaration_stat.type;
         }
         break;
+    case ARRAY_CREATION_EXPRESSION:
+    {
+        ExpressionListNode *dim;
+        TypeDerive *td;
+        int i = 0;
+        for(dim=expr->array_creation_expr.dimension_list_header_p; dim; dim=dim->next, i ++) {
+            if(!is_expr_type(dim->expr, INT_TYPE)) {
+                printf("type_check_and_cast:ARRAY_CREATION_EXPRESSOIN,the <%d> dimension is not INT\n", i);
+                exit(1);
+            }
+        }
+
+        expr->type = create_typespecifier(expr->array_creation_expr.basic_type);
+        while(i --) {
+            td = alloc_typederive(ARRAY_DERIVE);
+            td->next = expr->type->derive_list_header_p;
+            expr->type->derive_list_header_p = td;
+        }
+        break;
+    }
+    case INDEX_EXPRESSION:
+    {
+        if(expr->index_expr.array->type->derive_list_header_p == NULL || 
+            expr->index_expr.array->type->derive_list_header_p->tag != ARRAY_DERIVE)
+        {
+            printf("type_check_and_cast:INDEX_EXPRESSION, array.tag is not ARRAY_DERIVE\n");
+            exit(1);
+        }
+        if(!is_expr_type(expr->index_expr.index, INT_TYPE)) {
+            printf("type_check_and_cast:INDEX_EXPRESSION, index type is not INT\n");
+            exit(1);
+        }
+        
+        expr->type = create_typespecifier(expr->index_expr.array->type->basic_type);
+        expr->type->derive_list_header_p = expr->index_expr.array->type->derive_list_header_p->next;
+        break;
+    }
+    case ARRAY_LITERAL_EXPRESSION:
+    {
+        if(expr->array_literal_expr->expr == NULL) {
+            printf("type_check_and_cast:ARRAY_LITERAL_EXPRESSION,array literal is empty\n");
+            exit(1);
+        }
+        expr->type = create_typespecifier(expr->array_literal_expr->expr->type->basic_type);
+        expr->type->derive_list_header_p = alloc_typederive(ARRAY_DERIVE);
+        expr->type->derive_list_header_p->next = expr->array_literal_expr->expr->type->derive_list_header_p;
+        break;
+    }
     case BOOLEAN_LITERAL_EXPRESSION:    /* processed in flex */
     case INT_LITERAL_EXPRESSION:        /* processed in flex */
     case DOUBLE_LITERAL_EXPRESSION:     /* processed in flex */
@@ -304,6 +386,8 @@ void type_check_and_cast(Expression *expr) {
         2. Identifier expression
 */
 void walk_expression(Expression *expr) {
+    Argument *arg;
+
     switch (expr->kind)
     {
     case NORMAL_ASSIGN_EXPRESSION:          /* Fallthrough */
@@ -313,7 +397,9 @@ void walk_expression(Expression *expr) {
     case DIV_ASSIGN_EXPRESSION:             /* Fallthrough */
     case MOD_ASSIGN_EXPRESSION:             
         walk_expression(expr->binary_expr.left);
-        if(expr->binary_expr.left->kind != IDENTIFIER_EXPRESSION) {
+        if(expr->binary_expr.left->kind != IDENTIFIER_EXPRESSION && 
+            expr->binary_expr.left->kind != INDEX_EXPRESSION) 
+        {
             printf("walk_expression:ASSIGN EXPRESSION, left value err\n");
             exit(1);
         }
@@ -343,8 +429,14 @@ void walk_expression(Expression *expr) {
         type_check_and_cast(expr);
         break;
     case FUNC_CALL_EXPRESSION:
+    {
+        walk_expression(expr->function_call_expr.callee);
+        for(arg = expr->function_call_expr.arg_list->phead; arg; arg=arg->next) {
+            walk_expression(arg->expr);
+        }
         type_check_and_cast(expr);
         break;
+    }
     case IDENTIFIER_EXPRESSION:
         type_check_and_cast(expr);
         break;
@@ -358,11 +450,38 @@ void walk_expression(Expression *expr) {
         walk_expression(expr->unary_operand);
         type_check_and_cast(expr);
         break;
-    case CAST_EXPRESSION:               
-    case BOOLEAN_LITERAL_EXPRESSION:    
-    case INT_LITERAL_EXPRESSION:        
-    case DOUBLE_LITERAL_EXPRESSION:     
-    case STRING_LITERAL_EXPRESSION:
+    case ARRAY_LITERAL_EXPRESSION:
+    {
+        ExpressionListNode *pos;
+        for(pos=expr->array_literal_expr; pos; pos=pos->next) {
+            walk_expression(pos->expr);
+        }
+        type_check_and_cast(expr);
+        break;
+    }
+    case ARRAY_CREATION_EXPRESSION:
+    {
+        ExpressionListNode *pos;
+        for(pos=expr->array_creation_expr.dimension_list_header_p; pos; pos=pos->next) {
+            if(pos->expr != NULL) {
+                walk_expression(pos->expr);
+            }
+        }
+        type_check_and_cast(expr);
+        break;
+    }
+    case INDEX_EXPRESSION:
+    {
+        walk_expression(expr->index_expr.array);
+        walk_expression(expr->index_expr.index);
+        type_check_and_cast(expr);
+        break;
+    }
+    case CAST_EXPRESSION:               /* Fallthrough */  
+    case BOOLEAN_LITERAL_EXPRESSION:    /* Fallthrough */   
+    case INT_LITERAL_EXPRESSION:        /* Fallthrough */   
+    case DOUBLE_LITERAL_EXPRESSION:     /* Fallthrough */   
+    case STRING_LITERAL_EXPRESSION:     /* Fallthrough */  
     default:
         type_check_and_cast(expr);
         break;
@@ -444,8 +563,11 @@ void walk_if_statement(Statement *stat) {
 }
 
 void walk_return_statement(Statement *stat) {
+    if(cur_func == NULL) {
+        printf("walk_return_statement:return must use in function scope.\n");
+        exit(1);
+    }
     walk_expression(stat->u.return_stat.ret_expr);
-    /* Todo after walk statement list of block */
     if(cur_func != NULL) {
         if(stat->u.return_stat.ret_expr->type->basic_type != cur_func->type->basic_type) {
             printf("walk_return_statement:return type not matched, need %s, got %s\n", 
@@ -604,6 +726,7 @@ void walk_ast_for_semantic_analysis(Compiler *comp) {
 
     /* walk statement list of each function block */
     for(cur_func=comp->function_list->phead; cur_func; cur_func=cur_func->next) {
+        if(cur_func->block == NULL) continue;
         /* I do not know the necessity of the procedure. */
         assemble_local_variable(cur_func);
 

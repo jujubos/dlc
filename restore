@@ -14,4 +14,8 @@
     | 当前进度: expression statement还差几个(COMMA, CAST, POST_*, FUNC_CALL).
 下一步: Execute()
     | 从Execute()切入，逐步完成虚拟机
-    
+下一步: 加入数组
+    | 新增文法 (diksam.y)
+    | TypeSpecifier新增TypeDerive，以描述派生类型
+    | 新增虚拟机指令（创建数组的指令[new_array, new_array_literal_xxx]，访问数组的指令[push_array_xxx, pop_array_xxx]）
+下一步: 实现链接和包管理

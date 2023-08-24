@@ -8,8 +8,13 @@ typedef enum {
     BOOLEAN_TYPE,
     INT_TYPE,
     DOUBLE_TYPE,
-    STRING_TYPE
+    STRING_TYPE,
+    NULL_TYPE,
 } ValueType;
+
+typedef enum {
+    ARRAY_DERIVE,
+} DeriveTag;
 
 typedef enum {
     INT_CONSTANT,
@@ -28,17 +33,24 @@ typedef enum {
     /**********/
     PUSH_STACK_INT,
     PUSH_STACK_DOUBLE,
-    PUSH_STACK_STRING,
+    PUSH_STACK_OBJECT,
     POP_STACK_INT,
     POP_STACK_DOUBLE,
-    POP_STACK_STRING,
+    POP_STACK_OBJECT,
     /**********/
     PUSH_STATIC_INT,
     PUSH_STATIC_DOUBLE,
-    PUSH_STATIC_STRING,
+    PUSH_STATIC_OBJECT,
     POP_STATIC_INT,
     POP_STATIC_DOUBLE,
-    POP_STATIC_STRING,
+    POP_STATIC_OBJECT,
+    /**********/
+    PUSH_ARRAY_INT,
+    PUSH_ARRAY_DOUBLE,
+    PUSH_ARRAY_OBJECT,
+    POP_ARRAY_INT,
+    POP_ARRAY_DOUBLE,
+    POP_ARRAY_OBJECT,
     /**********/
     ADD_INT,
     ADD_DOUBLE,
@@ -90,6 +102,10 @@ typedef enum {
     PUSH_FUNCTION,
     INVOKE,
     RETURN,
+    NEW_ARRAY_OP,
+    NEW_ARRAY_LITERAL_INT,
+    NEW_ARRAY_LITERAL_DOUBLE,
+    NEW_ARRAY_LITERAL_OBJECT,
 } OpCodeTag;
 /* enum_end */
 
@@ -105,9 +121,16 @@ typedef struct DataSegment      DataSegment;
 typedef struct CodeSegment      CodeSegment;
 typedef struct Function         Function;
 typedef struct OpcodeInfo       OpcodeInfo;
+typedef struct TypeDerive       TypeDerive;
 /* typedef_end */
+struct TypeDerive {
+    DeriveTag  tag;
+    TypeDerive *next;
+};
+
 struct TypeSpecifier {
-    ValueType basic_type;
+    ValueType   basic_type;
+    TypeDerive  *derive_list_header_p;
 };
 
 struct OpcodeInfo {

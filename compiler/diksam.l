@@ -116,12 +116,16 @@ increment_line_number(void)
 <INITIAL>"catch"        return CATCH;
 <INITIAL>"finally"      return FINALLY;
 <INITIAL>"throw"        return THROW;
+<INITIAL>"new"          return NEW;
 <INITIAL>"boolean"      return BOOLEAN_T;
 <INITIAL>"int"          return INT_T;
 <INITIAL>"double"       return DOUBLE_T;
 <INITIAL>"string"       return STRING_T;
+<INITIAL>"NULL"         return NULL_T;
 <INITIAL>"("            return LP;
 <INITIAL>")"            return RP;
+<INITIAL>"["            return LB;
+<INITIAL>"]"            return RB;
 <INITIAL>"{"            return LC;
 <INITIAL>"}"            return RC;
 <INITIAL>";"            return SEMICOLON;

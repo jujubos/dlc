@@ -4,10 +4,12 @@
     'b' means imm8
     'd' means imm16
     'p' means pointer to constant, that is, two byte index.
-    's' means two byte index to indentifier.
+    's' means two byte operand generally.
+    "bs" means two operand, the first size is 1 byte, the second size is 2 byte.
 */
 OpcodeInfo opcode_info[] = {
     {"dummy", "", 0},
+    /*7*/
     {"push_int_1byte", "b", 1},
     {"push_int_2byte", "d", 1},
     {"push_int", "p", 1},
@@ -15,21 +17,28 @@ OpcodeInfo opcode_info[] = {
     {"push_double_1", "", 1},
     {"push_double", "p", 1},
     {"push_string", "p", 1},
-    /**********/
+    /*6*/
     {"push_stack_int", "s", 1},
     {"push_stack_double", "s", 1},
-    {"push_stack_string", "s", 1},
+    {"push_stack_object", "s", 1},
     {"pop_stack_int", "s", -1},
     {"pop_stack_double", "s", -1},
-    {"pop_stack_string", "s", -1},
-    /**********/
+    {"pop_stack_object", "s", -1},
+    /*6*/
     {"push_static_int", "s", 1},
     {"push_static_double", "s", 1},
-    {"push_static_string", "s", 1},
+    {"push_static_object", "s", 1},
     {"pop_static_int", "s", -1},
     {"pop_static_double", "s", -1},
-    {"pop_static_string", "s", -1},
-    /**********/
+    {"pop_static_object", "s", -1},
+    /*6*/
+    {"push_array_int", "", 1},
+    {"push_array_double", "", 1},
+    {"push_array_object", "", 1},
+    {"pop_array_int", "", -1},
+    {"pop_array_double", "", -1},
+    {"pop_array_object", "", -1},
+    /*46*/
     {"add_int", "", -1},
     {"add_double", "", -1},
     {"add_string", "", -1},
@@ -76,9 +85,14 @@ OpcodeInfo opcode_info[] = {
     {"jump", "s", 0},
     {"jump_if_true", "s", -1},
     {"jump_if_false", "s", -1},
-    /**********/
-    {"push_function", "s", 0},
+    /*3*/
+    {"push_function", "s", 1},
     {"invoke", "", -1},
     {"return", "", -1},
+    /*4*/
+    {"new_array", "a", 0},
+    {"new_array_literal_int", "s", 1},
+    {"new_array_literal_double", "s", 1},
+    {"new_array_literal_object", "s", 1},
 };
 

@@ -2,7 +2,7 @@ int print(string str);
 int a = 65536;
 double d = 1.33;
 
-string str = "ddl";
+string str = "dlc";
 
 boolean b = true;
 

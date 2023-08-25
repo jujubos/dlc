@@ -1,4 +1,4 @@
-TARGET=ddl
+TARGET=dlc
 CC=gcc
 OBJS= \
 	opcode.o\

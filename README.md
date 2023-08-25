@@ -1,4 +1,4 @@
-- git clone https://github.com/jujubos/ddl.git
-- cd ddl
+- git clone https://github.com/jujubos/dlc.git
+- cd dlc
 - make
-- ./ddl test/quicksort.dl
+- ./dlc test/quicksort.dl
